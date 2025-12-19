@@ -650,11 +650,23 @@ export default function BonfireAwardsApp() {
             </h1>
 
             <p className="max-w-lg text-[#8A8580] text-lg font-body font-light leading-relaxed mb-16 italic">
-              "Соберитесь у костра. Бросьте свой камень. <br/>
-              Почтите легенды нашего мира."
+              "В пламени рождаются легенды. <br/>
+              Ваш голос — их судьба."
             </p>
 
-            {!votingEnabled ? (
+            {!isAuthenticated ? (
+              // Неавторизованные пользователи всегда могут войти
+              <button 
+                onClick={handleLogin}
+                className="group relative px-12 py-5 bg-transparent border border-[#555] text-[#E8E6D1] font-heading font-bold uppercase tracking-widest hover:border-[#FF5500] hover:text-[#FF5500] transition-all duration-300"
+              >
+                <div className="flex items-center gap-3">
+                  <Scroll size={20} />
+                  Войти через Bonfire
+                </div>
+              </button>
+            ) : !votingEnabled ? (
+              // Авторизованные пользователи видят сообщение, если голосование закрыто
               <div className="text-center">
                 <div className="mb-6 p-6 border-2 border-[#555] rounded">
                   <Shield size={48} className="text-[#555] mx-auto mb-4" />
@@ -666,42 +678,32 @@ export default function BonfireAwardsApp() {
                   </p>
                 </div>
               </div>
-            ) : isAuthenticated ? (
-              categories.length > 0 ? (
-                <button 
-                  onClick={() => {
-                    setView('voting');
-                    setCurrentStep(0);
-                  }}
-                  className="group relative px-12 py-5 bg-transparent border border-[#FF5500] text-[#FF5500] font-heading font-bold uppercase tracking-widest hover:bg-[#FF5500] hover:text-[#110F0E] transition-all duration-300"
-                >
-                  <div className="flex items-center gap-3">
-                    <Scroll size={20} />
-                    К голосованию
-                  </div>
-                </button>
-              ) : (
-                <button 
-                  onClick={() => {
-                    setView('voting');
-                    setCurrentStep(0);
-                  }}
-                  className="group relative px-12 py-5 bg-transparent border border-[#FF5500] text-[#FF5500] font-heading font-bold uppercase tracking-widest hover:bg-[#FF5500] hover:text-[#110F0E] transition-all duration-300"
-                >
-                  <div className="flex items-center gap-3">
-                    <Scroll size={20} />
-                    Начать голосование
-                  </div>
-                </button>
-              )
-            ) : (
+            ) : categories.length > 0 ? (
+              // Авторизованные пользователи с открытым голосованием и категориями
               <button 
-                onClick={handleLogin}
-                className="group relative px-12 py-5 bg-transparent border border-[#555] text-[#E8E6D1] font-heading font-bold uppercase tracking-widest hover:border-[#FF5500] hover:text-[#FF5500] transition-all duration-300"
+                onClick={() => {
+                  setView('voting');
+                  setCurrentStep(0);
+                }}
+                className="group relative px-12 py-5 bg-transparent border border-[#FF5500] text-[#FF5500] font-heading font-bold uppercase tracking-widest hover:bg-[#FF5500] hover:text-[#110F0E] transition-all duration-300"
               >
                 <div className="flex items-center gap-3">
                   <Scroll size={20} />
-                  Войти через Bonfire
+                  К голосованию
+                </div>
+              </button>
+            ) : (
+              // Авторизованные пользователи с открытым голосованием, но без категорий
+              <button 
+                onClick={() => {
+                  setView('voting');
+                  setCurrentStep(0);
+                }}
+                className="group relative px-12 py-5 bg-transparent border border-[#FF5500] text-[#FF5500] font-heading font-bold uppercase tracking-widest hover:bg-[#FF5500] hover:text-[#110F0E] transition-all duration-300"
+              >
+                <div className="flex items-center gap-3">
+                  <Scroll size={20} />
+                  Начать голосование
                 </div>
               </button>
             )}
