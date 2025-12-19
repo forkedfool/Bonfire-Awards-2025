@@ -66,6 +66,17 @@ export default function BonfireAwardsApp() {
     if (!authLoading) {
       loadInitialData();
       checkAdminStatus();
+      // Загружаем статус голосования при инициализации
+      (async () => {
+        try {
+          const data = await votingAPI.getStatus();
+          const enabled = data.votingEnabled === true || (data.votingEnabled !== false && data.votingEnabled !== 'false');
+          setVotingEnabled(enabled);
+        } catch (error) {
+          console.error('[VOTING STATUS] Error loading on init:', error);
+          setVotingEnabled(true);
+        }
+      })();
     }
   }, [authLoading, isAuthenticated]);
 
@@ -88,6 +99,21 @@ export default function BonfireAwardsApp() {
 
   // Загружаем статус голосования при переходе на страницу голосования и периодически
   useEffect(() => {
+    async function loadVotingStatus() {
+      try {
+        const data = await votingAPI.getStatus();
+        console.log('[VOTING STATUS] Loaded:', data);
+        // Явно проверяем значение, так как может быть false
+        const enabled = data.votingEnabled === true || (data.votingEnabled !== false && data.votingEnabled !== 'false');
+        setVotingEnabled(enabled);
+        console.log('[VOTING STATUS] Set to:', enabled);
+      } catch (error) {
+        console.error('[VOTING STATUS] Error loading:', error);
+        // В случае ошибки считаем, что голосование включено
+        setVotingEnabled(true);
+      }
+    }
+
     if (view === 'voting' || view === 'landing') {
       loadVotingStatus();
     }
