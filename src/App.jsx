@@ -878,6 +878,7 @@ export default function BonfireAwardsApp() {
                   <span className="text-[10px] font-heading uppercase tracking-widest">Keeper Panel</span>
                   <Crown size={12} />
                </button>
+               )}
                <div className="text-[#333] text-[10px] font-heading tracking-widest">
                   EST. 2025
                </div>
