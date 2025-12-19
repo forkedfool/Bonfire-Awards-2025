@@ -41,6 +41,7 @@ function validateEnvVars() {
 function getOidcConfig() {
   // Убеждаемся, что redirect_uri всегда одинаковый
   const redirectUri = import.meta.env.VITE_BONFIRE_REDIRECT_URI || `${window.location.origin}/auth/callback`;
+  const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
   
   const config = {
     authority: 'https://api.bonfire.moe',
@@ -58,15 +59,23 @@ function getOidcConfig() {
     }),
     loadUserInfo: true,
     filterProtocolClaims: true,
+    // Используем наш бэкенд для обмена токенов
+    // Это позволяет использовать client_secret безопасно на бэкенде
+    metadata: {
+      issuer: 'https://api.bonfire.moe',
+      authorization_endpoint: 'https://api.bonfire.moe/openid/authorize',
+      token_endpoint: `${API_BASE_URL}/auth/exchange-token`, // Используем наш бэкенд
+      userinfo_endpoint: 'https://api.bonfire.moe/openid/userinfo',
+      jwks_uri: 'https://api.bonfire.moe/.well-known/jwks.json',
+      end_session_endpoint: 'https://api.bonfire.moe/openid/logout',
+    },
     // Явно включаем PKCE для безопасности
     // oidc-client использует PKCE по умолчанию для публичных клиентов
   };
   
   // ВАЖНО: НЕ добавляем client_secret на фронтенд!
-  // Если Bonfire требует client_secret для обмена токенов, нужно:
-  // 1. Убрать client_secret из фронтенда
-  // 2. Сделать обмен токенов на бекенде (см. server/routes/auth.js)
-  // 3. Или использовать PKCE (oidc-client делает это автоматически)
+  // Обмен токенов происходит через наш бэкенд (см. server/routes/auth.js)
+  // Бэкенд безопасно использует client_secret если требуется
   
   return config;
 }
@@ -241,26 +250,156 @@ export async function handleCallback() {
       user = await manager.signinRedirectCallback();
     } catch (callbackError) {
       console.error('Ошибка в signinRedirectCallback:', callbackError);
+      console.error('Детали ошибки callback:', {
+        message: callbackError.message,
+        name: callbackError.name,
+        error: callbackError.toString()
+      });
       
-      // Если ошибка связана с state, проверяем, может быть проблема в конфигурации
-      if (callbackError.message && callbackError.message.includes('state')) {
-        console.warn('Проблема с state. Проверяем конфигурацию...');
-        const config = getOidcConfig();
-        console.log('Текущая конфигурация:', {
-          redirect_uri: config.redirect_uri,
-          authority: config.authority,
-          client_id: config.client_id ? '***установлен***' : 'НЕ УСТАНОВЛЕН'
-        });
+      // Если ошибка 500 при обмене токенов, пробуем использовать наш бэкенд вручную
+      if (callbackError.message && (callbackError.message.includes('500') || callbackError.message.includes('fetch failed'))) {
+        console.warn('Ошибка при прямом обмене токенов, пробуем через бэкенд...');
         
-        // Проверяем, что redirect_uri в URL совпадает с конфигурацией
-        const currentUrl = new URL(window.location.href);
-        const expectedPath = new URL(config.redirect_uri).pathname;
-        if (currentUrl.pathname !== expectedPath) {
-          console.error(`Несоответствие redirect_uri! Ожидалось: ${expectedPath}, получено: ${currentUrl.pathname}`);
+        try {
+          // Получаем code_verifier из localStorage
+          // oidc-client хранит его в ключе вида oidc.{state}
+          const stateKey = Object.keys(localStorage).find(key => key.includes(state));
+          let codeVerifier = null;
+          
+          if (stateKey) {
+            try {
+              const storedData = localStorage.getItem(stateKey);
+              if (storedData) {
+                const parsed = JSON.parse(storedData);
+                // code_verifier может быть в разных местах в зависимости от версии oidc-client
+                codeVerifier = parsed.code_verifier || parsed.codeVerifier || null;
+              }
+            } catch (e) {
+              console.warn('Не удалось прочитать state из localStorage:', e);
+            }
+          }
+          
+          // Обмениваем код на токены через наш бэкенд
+          const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+          const config = getOidcConfig();
+          
+          console.log('Обмен токенов через бэкенд:', {
+            code: code ? '***present***' : 'missing',
+            hasCodeVerifier: !!codeVerifier,
+            redirect_uri: config.redirect_uri,
+          });
+          
+          const tokenResponse = await fetch(`${API_BASE_URL}/auth/exchange-token`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              code: code,
+              code_verifier: codeVerifier,
+              redirect_uri: config.redirect_uri,
+            }),
+          });
+          
+          if (!tokenResponse.ok) {
+            const errorText = await tokenResponse.text();
+            console.error('Ошибка обмена токенов через бэкенд:', {
+              status: tokenResponse.status,
+              error: errorText,
+            });
+            throw new Error(`Не удалось обменять код на токены: ${tokenResponse.status} ${errorText}`);
+          }
+          
+          const tokens = await tokenResponse.json();
+          console.log('Токены получены через бэкенд:', {
+            hasAccessToken: !!tokens.access_token,
+            hasIdToken: !!tokens.id_token,
+            hasRefreshToken: !!tokens.refresh_token,
+          });
+          
+          // Создаем User объект вручную
+          // Нужно получить userinfo и создать объект User
+          let userInfo = {};
+          if (tokens.access_token) {
+            try {
+              const userInfoResponse = await fetch('https://api.bonfire.moe/openid/userinfo', {
+                headers: {
+                  'Authorization': `Bearer ${tokens.access_token}`,
+                },
+              });
+              
+              if (userInfoResponse.ok) {
+                userInfo = await userInfoResponse.json();
+              } else {
+                console.warn('Не удалось получить userinfo, используем данные из id_token');
+              }
+            } catch (userInfoError) {
+              console.warn('Ошибка при получении userinfo:', userInfoError);
+            }
+          }
+          
+          // Декодируем id_token если нужно
+          if (tokens.id_token && !userInfo.sub) {
+            try {
+              const idTokenParts = tokens.id_token.split('.');
+              if (idTokenParts.length === 3) {
+                const payload = JSON.parse(atob(idTokenParts[1]));
+                userInfo = { ...userInfo, ...payload };
+              }
+            } catch (e) {
+              console.warn('Не удалось декодировать id_token');
+            }
+          }
+          
+          // Создаем User объект в формате oidc-client
+          const expiresAt = tokens.expires_in 
+            ? Math.floor(Date.now() / 1000) + tokens.expires_in 
+            : null;
+          
+          user = {
+            id_token: tokens.id_token,
+            access_token: tokens.access_token,
+            refresh_token: tokens.refresh_token,
+            token_type: tokens.token_type || 'Bearer',
+            scope: tokens.scope || config.scope,
+            expires_at: expiresAt,
+            profile: userInfo,
+            state: state,
+            session_state: null,
+          };
+          
+          // Сохраняем пользователя в хранилище
+          await manager.storeUser(user);
+          console.log('Пользователь сохранен после ручного обмена токенов:', {
+            email: userInfo.email || userInfo.sub,
+            hasToken: !!user.access_token,
+          });
+        } catch (manualError) {
+          console.error('Ошибка при ручном обмене токенов:', manualError);
+          // Пробрасываем более информативную ошибку
+          throw new Error(`Ошибка обмена токенов: ${manualError.message || callbackError.message}`);
         }
+      } else {
+        // Если ошибка связана с state, проверяем, может быть проблема в конфигурации
+        if (callbackError.message && callbackError.message.includes('state')) {
+          console.warn('Проблема с state. Проверяем конфигурацию...');
+          const config = getOidcConfig();
+          console.log('Текущая конфигурация:', {
+            redirect_uri: config.redirect_uri,
+            authority: config.authority,
+            client_id: config.client_id ? '***установлен***' : 'НЕ УСТАНОВЛЕН'
+          });
+          
+          // Проверяем, что redirect_uri в URL совпадает с конфигурацией
+          const currentUrl = new URL(window.location.href);
+          const expectedPath = new URL(config.redirect_uri).pathname;
+          if (currentUrl.pathname !== expectedPath) {
+            console.error(`Несоответствие redirect_uri! Ожидалось: ${expectedPath}, получено: ${currentUrl.pathname}`);
+          }
+        }
+        
+        throw callbackError;
       }
-      
-      throw callbackError;
     }
     
     if (!user) {

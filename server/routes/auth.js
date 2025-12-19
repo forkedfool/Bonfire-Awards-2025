@@ -2,6 +2,9 @@ import express from 'express';
 import { config } from '../config.js';
 import { verifyBonfireToken } from '../middleware/auth.js';
 
+// Middleware для обработки form-urlencoded (для oidc-client)
+const urlencodedParser = express.urlencoded({ extended: true });
+
 const router = express.Router();
 
 // Получить информацию о текущем пользователе
@@ -29,9 +32,14 @@ router.get('/me', verifyBonfireToken, (req, res) => {
 // Обмен authorization code на токены (если Bonfire требует client_secret)
 // ВАЖНО: Этот endpoint должен использоваться только если Bonfire требует client_secret
 // для обмена токенов, и обмен не может происходить на фронтенде
-router.post('/exchange-token', async (req, res) => {
+// Также используется oidc-client для обхода проблем с прямым обменом токенов
+// Поддерживает как JSON, так и application/x-www-form-urlencoded (для oidc-client)
+router.post('/exchange-token', urlencodedParser, async (req, res) => {
   try {
-    const { code, code_verifier, redirect_uri } = req.body;
+    // Поддерживаем оба формата: JSON и form-urlencoded
+    const code = req.body.code;
+    const code_verifier = req.body.code_verifier;
+    const redirect_uri = req.body.redirect_uri;
 
     if (!code) {
       return res.status(400).json({ 
@@ -40,43 +48,107 @@ router.post('/exchange-token', async (req, res) => {
       });
     }
 
-    // Если Bonfire требует client_secret для обмена токенов
-    // Используем его здесь (на бекенде, безопасно)
-    const tokenResponse = await fetch(`${config.bonfire.authority}/openid/token`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: new URLSearchParams({
-        grant_type: 'authorization_code',
-        code: code,
-        client_id: config.bonfire.clientId,
-        redirect_uri: redirect_uri || `${req.protocol}://${req.get('host')}/auth/callback`,
-        ...(code_verifier && { code_verifier }), // PKCE
-        ...(config.bonfire.clientSecret && { client_secret: config.bonfire.clientSecret }), // Если требуется
-      }),
-    });
-
-    if (!tokenResponse.ok) {
-      const errorText = await tokenResponse.text();
-      console.error('Token exchange error:', errorText);
-      return res.status(tokenResponse.status).json({ 
+    if (!config.bonfire.clientId) {
+      console.error('BONFIRE_CLIENT_ID not configured');
+      return res.status(500).json({ 
         success: false,
-        error: 'Failed to exchange code for tokens',
-        details: errorText 
+        error: 'Server configuration error' 
       });
     }
 
-    const tokens = await tokenResponse.json();
+    // Формируем параметры для обмена токенов
+    const tokenParams = new URLSearchParams({
+      grant_type: 'authorization_code',
+      code: code,
+      client_id: config.bonfire.clientId,
+      redirect_uri: redirect_uri || `${req.protocol}://${req.get('host')}/auth/callback`,
+    });
+
+    // Добавляем PKCE code_verifier если предоставлен
+    if (code_verifier) {
+      tokenParams.append('code_verifier', code_verifier);
+    }
+
+    // Добавляем client_secret если требуется (только на бэкенде!)
+    if (config.bonfire.clientSecret) {
+      tokenParams.append('client_secret', config.bonfire.clientSecret);
+    }
+
+    console.log('Exchanging token with Bonfire:', {
+      authority: config.bonfire.authority,
+      hasCode: !!code,
+      hasCodeVerifier: !!code_verifier,
+      hasClientSecret: !!config.bonfire.clientSecret,
+      redirect_uri: redirect_uri || `${req.protocol}://${req.get('host')}/auth/callback`,
+    });
+
+    // Если Bonfire требует client_secret для обмена токенов
+    // Используем его здесь (на бекенде, безопасно)
+    const tokenUrl = `${config.bonfire.authority}/openid/token`;
+    const tokenResponse = await fetch(tokenUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Accept': 'application/json',
+      },
+      body: tokenParams.toString(),
+    });
+
+    const responseText = await tokenResponse.text();
+    console.log('Token exchange response status:', tokenResponse.status);
+    console.log('Token exchange response:', responseText.substring(0, 200));
+
+    if (!tokenResponse.ok) {
+      console.error('Token exchange error:', {
+        status: tokenResponse.status,
+        statusText: tokenResponse.statusText,
+        body: responseText,
+      });
+      
+      let errorDetails;
+      try {
+        errorDetails = JSON.parse(responseText);
+      } catch (e) {
+        errorDetails = { error: responseText };
+      }
+      
+      return res.status(tokenResponse.status).json({ 
+        success: false,
+        error: 'Failed to exchange code for tokens',
+        details: errorDetails,
+        bonfireError: true,
+      });
+    }
+
+    let tokens;
+    try {
+      tokens = JSON.parse(responseText);
+    } catch (e) {
+      console.error('Failed to parse token response as JSON:', e);
+      return res.status(500).json({ 
+        success: false,
+        error: 'Invalid token response format' 
+      });
+    }
+
+    // Возвращаем токены в формате, ожидаемом oidc-client
     res.json({
+      access_token: tokens.access_token,
+      id_token: tokens.id_token,
+      refresh_token: tokens.refresh_token,
+      token_type: tokens.token_type || 'Bearer',
+      expires_in: tokens.expires_in,
+      scope: tokens.scope,
+      // Также возвращаем success для совместимости с нашим API
       success: true,
-      ...tokens,
     });
   } catch (error) {
     console.error('Error exchanging token:', error);
+    console.error('Error stack:', error.stack);
     res.status(500).json({ 
       success: false,
-      error: error.message || 'Internal server error' 
+      error: error.message || 'Internal server error',
+      details: process.env.NODE_ENV === 'development' ? error.stack : undefined,
     });
   }
 });
