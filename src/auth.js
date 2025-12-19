@@ -53,8 +53,8 @@ function getOidcConfig() {
     automaticSilentRenew: true,
     silent_redirect_uri: `${window.location.origin}/auth/silent-callback`,
     userStore: new WebStorageStateStore({ 
-      store: window.localStorage,
-      prefix: 'oidc.user' // Явно указываем префикс для ключей
+      store: window.localStorage
+      // Не указываем кастомный prefix - используем дефолтный от oidc-client
     }),
     loadUserInfo: true,
     filterProtocolClaims: true,
@@ -174,8 +174,19 @@ export async function signOut() {
   }
 }
 
+// Защита от повторного вызова handleCallback
+let callbackProcessing = false;
+
 // Функция для обработки callback после входа
 export async function handleCallback() {
+  // Защита от повторного вызова
+  if (callbackProcessing) {
+    console.warn('Callback уже обрабатывается, пропускаем повторный вызов');
+    throw new Error('Callback уже обрабатывается');
+  }
+  
+  callbackProcessing = true;
+  
   try {
     if (!validateEnvVars()) {
       throw new Error('Не настроены переменные окружения для авторизации');
@@ -258,8 +269,10 @@ export async function handleCallback() {
     
     console.log('Пользователь успешно авторизован:', user.profile?.email || user.profile?.sub);
     console.log('Токен получен:', user.access_token ? 'Да' : 'Нет');
+    callbackProcessing = false;
     return user;
   } catch (error) {
+    callbackProcessing = false;
     console.error('Ошибка обработки callback:', error);
     console.error('Детали ошибки:', {
       message: error.message,

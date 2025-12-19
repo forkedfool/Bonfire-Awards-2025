@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { handleCallback } from './auth.js';
 import { useAuth } from './AuthContext.jsx';
@@ -7,9 +7,21 @@ import { Flame } from 'lucide-react';
 export default function AuthCallback() {
   const navigate = useNavigate();
   const { loadUser } = useAuth();
+  const processedRef = useRef(false);
 
   useEffect(() => {
+    // Защита от повторного вызова (React StrictMode вызывает useEffect дважды)
+    if (processedRef.current) {
+      console.log('Callback уже обработан, пропускаем повторный вызов');
+      return;
+    }
+
     async function processCallback() {
+      if (processedRef.current) {
+        return;
+      }
+      processedRef.current = true;
+
       try {
         await handleCallback();
         // Перезагружаем пользователя после успешного callback
