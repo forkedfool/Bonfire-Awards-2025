@@ -6,31 +6,46 @@ import { UserManager, WebStorageStateStore } from 'oidc-client';
 
 // Получаем переменные окружения
 const clientId = import.meta.env.VITE_BONFIRE_CLIENT_ID;
+// ВАЖНО: client_secret НЕ должен быть на фронтенде для безопасности!
+// Если Bonfire требует client_secret для обмена токенов, обмен должен происходить на бекенде
 const clientSecret = import.meta.env.VITE_BONFIRE_CLIENT_SECRET;
 
 // Функция для проверки переменных окружения (вызывается при необходимости)
 function validateEnvVars() {
-  if (!clientId || !clientSecret) {
+  if (!clientId) {
     console.error(
-      'Отсутствуют обязательные переменные окружения!\n' +
-      'Создайте файл .env.development или .env.production со следующими переменными:\n' +
-      'VITE_BONFIRE_CLIENT_ID=your_client_id\n' +
-      'VITE_BONFIRE_CLIENT_SECRET=your_client_secret'
+      'Отсутствует обязательная переменная окружения!\n' +
+      'Создайте файл .env.development или .env.production со следующей переменной:\n' +
+      'VITE_BONFIRE_CLIENT_ID=your_client_id'
     );
     return false;
   }
+  
+  // Предупреждение, если client_secret на фронтенде (небезопасно!)
+  if (clientSecret) {
+    console.warn(
+      '⚠️ ВНИМАНИЕ: VITE_BONFIRE_CLIENT_SECRET найден на фронтенде!\n' +
+      'Это НЕБЕЗОПАСНО для публичных клиентов (SPA).\n' +
+      'Если Bonfire требует client_secret, обмен токенов должен происходить на бекенде.\n' +
+      'Удалите VITE_BONFIRE_CLIENT_SECRET из .env файлов фронтенда.'
+    );
+  }
+  
   return true;
 }
 
 // Создаем конфигурацию
+// ВАЖНО: Если Bonfire требует client_secret, его НЕЛЬЗЯ использовать на фронтенде!
+// Вместо этого обмен токенов должен происходить на бекенде.
+// oidc-client автоматически использует PKCE для безопасности публичных клиентов
 function getOidcConfig() {
-  return {
+  const config = {
     authority: 'https://api.bonfire.moe',
     client_id: clientId || '',
-    client_secret: clientSecret || '',
     redirect_uri: import.meta.env.VITE_BONFIRE_REDIRECT_URI || `${window.location.origin}/auth/callback`,
     response_type: 'code',
-    scope: 'openid email profile offline_access',
+    // Scope можно настроить через переменную окружения, по умолчанию используем минимальный набор
+    scope: import.meta.env.VITE_BONFIRE_SCOPE || 'openid email profile',
     post_logout_redirect_uri: window.location.origin,
     automaticSilentRenew: true,
     silent_redirect_uri: `${window.location.origin}/auth/silent-callback`,
@@ -38,6 +53,14 @@ function getOidcConfig() {
     loadUserInfo: true,
     filterProtocolClaims: true,
   };
+  
+  // ВАЖНО: НЕ добавляем client_secret на фронтенд!
+  // Если Bonfire требует client_secret для обмена токенов, нужно:
+  // 1. Убрать client_secret из фронтенда
+  // 2. Сделать обмен токенов на бекенде (см. server/routes/auth.js)
+  // 3. Или использовать PKCE (oidc-client делает это автоматически)
+  
+  return config;
 }
 
 // Ленивая инициализация UserManager (создается только при необходимости)
