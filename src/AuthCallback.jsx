@@ -1,17 +1,23 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { handleCallback } from './auth.js';
+import { useAuth } from './AuthContext.jsx';
 import { Flame } from 'lucide-react';
 
 export default function AuthCallback() {
   const navigate = useNavigate();
+  const { loadUser } = useAuth();
 
   useEffect(() => {
     async function processCallback() {
       try {
         await handleCallback();
-        // После успешной обработки callback перенаправляем на главную
-        navigate('/');
+        // Перезагружаем пользователя после успешного callback
+        await loadUser();
+        // Небольшая задержка для обновления состояния
+        setTimeout(() => {
+          navigate('/');
+        }, 100);
       } catch (error) {
         console.error('Ошибка обработки callback:', error);
         // В случае ошибки тоже перенаправляем на главную
@@ -20,7 +26,7 @@ export default function AuthCallback() {
     }
 
     processCallback();
-  }, [navigate]);
+  }, [navigate, loadUser]);
 
   return (
     <div className="min-h-screen bg-[#110F0E] text-[#E8E6D1] flex items-center justify-center">

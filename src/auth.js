@@ -120,51 +120,10 @@ export async function signIn() {
   }
 
   try {
-    const config = getOidcConfig();
-    console.log('Начинаем процесс авторизации...');
-    console.log('Redirect URI:', config.redirect_uri);
-    console.log('Client ID:', config.client_id ? '***установлен***' : 'НЕ УСТАНОВЛЕН');
-    
-    // Создаем URL для авторизации вручную, если signinRedirect не работает
-    try {
-      // Пытаемся выполнить редирект через oidc-client
-      const manager = getUserManager();
-      await manager.signinRedirect();
-    } catch (oidcError) {
-      console.warn('signinRedirect не сработал, пробуем альтернативный способ:', oidcError);
-      
-      // Альтернативный способ: создаем URL вручную
-      const redirectUri = encodeURIComponent(config.redirect_uri);
-      const scope = encodeURIComponent(config.scope);
-      const responseType = encodeURIComponent(config.response_type);
-      const clientIdValue = encodeURIComponent(config.client_id);
-      
-      // Генерируем state и nonce для безопасности
-      const state = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
-      const nonce = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
-      
-      // Сохраняем state в sessionStorage для проверки при callback
-      sessionStorage.setItem('oidc.state', state);
-      sessionStorage.setItem('oidc.nonce', nonce);
-      
-      const authUrl = `https://api.bonfire.moe/openid/authorize?` +
-        `client_id=${clientIdValue}&` +
-        `redirect_uri=${redirectUri}&` +
-        `response_type=${responseType}&` +
-        `scope=${scope}&` +
-        `state=${state}&` +
-        `nonce=${nonce}`;
-      
-      console.log('Выполняем редирект на:', authUrl);
-      window.location.href = authUrl;
-    }
+    const manager = getUserManager();
+    await manager.signinRedirect();
   } catch (error) {
     console.error('Ошибка входа:', error);
-    console.error('Детали ошибки:', {
-      message: error.message,
-      stack: error.stack,
-      name: error.name
-    });
     throw error;
   }
 }
@@ -191,9 +150,32 @@ export async function handleCallback() {
     }
     const manager = getUserManager();
     const user = await manager.signinRedirectCallback();
+    
+    if (!user) {
+      throw new Error('Не удалось получить пользователя после авторизации');
+    }
+    
+    console.log('Пользователь успешно авторизован:', user.profile?.email || user.profile?.sub);
     return user;
   } catch (error) {
     console.error('Ошибка обработки callback:', error);
+    console.error('Детали ошибки:', {
+      message: error.message,
+      name: error.name,
+      error: error.toString()
+    });
+    
+    // Если ошибка связана с state, возможно нужно очистить localStorage
+    if (error.message && error.message.includes('state')) {
+      console.warn('Ошибка state - возможно, нужно очистить localStorage');
+      try {
+        localStorage.clear();
+        sessionStorage.clear();
+      } catch (e) {
+        console.error('Не удалось очистить storage:', e);
+      }
+    }
+    
     throw error;
   }
 }

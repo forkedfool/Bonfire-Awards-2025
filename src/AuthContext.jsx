@@ -21,11 +21,10 @@ export function AuthProvider({ children }) {
       setUser(updatedUser);
     });
 
-    // Проверяем, есть ли callback в URL (после редиректа с Bonfire)
+    // НЕ обрабатываем callback здесь - это делает AuthCallback компонент
+    // Проверяем только silent callback
     const url = window.location.href;
-    if (url.includes('/auth/callback')) {
-      handleAuthCallback();
-    } else if (url.includes('/auth/silent-callback')) {
+    if (url.includes('/auth/silent-callback')) {
       handleSilentCallback();
     }
 
@@ -47,20 +46,6 @@ export function AuthProvider({ children }) {
     }
   }
 
-  async function handleAuthCallback() {
-    try {
-      // Импортируем handleCallback из auth.js
-      const { handleCallback } = await import('./auth.js');
-      const user = await handleCallback();
-      setUser(user);
-      // Убираем callback из URL
-      window.history.replaceState({}, document.title, '/');
-    } catch (error) {
-      console.error('Ошибка обработки callback:', error);
-      setUser(null);
-      window.history.replaceState({}, document.title, '/');
-    }
-  }
 
   async function handleSilentCallback() {
     try {
