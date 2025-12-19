@@ -187,6 +187,7 @@ export async function getAccessToken() {
     const user = await manager.getUser();
     
     if (!user) {
+      console.log('[AUTH] No user found');
       return null;
     }
     
@@ -195,19 +196,30 @@ export async function getAccessToken() {
       try {
         await manager.signinSilent();
         const refreshedUser = await manager.getUser();
-        return refreshedUser?.access_token || null;
+        const token = refreshedUser?.access_token;
+        console.log('[AUTH] Token refreshed:', {
+          hasToken: !!token,
+          tokenLength: token?.length || 0,
+        });
+        return token || null;
       } catch (silentError) {
+        console.error('[AUTH] Silent refresh failed:', silentError);
         return null;
       }
     }
     
     const token = user.access_token;
     
-    // Не блокируем короткие токены на клиенте
-    // Проверку формата сделает сервер
-    // Если токен есть, возвращаем его
+    console.log('[AUTH] Getting access token:', {
+      hasToken: !!token,
+      tokenLength: token?.length || 0,
+      tokenPreview: token ? token.substring(0, 30) + '...' : 'none',
+      tokenParts: token ? token.split('.').length : 0,
+    });
+    
     return token || null;
   } catch (error) {
+    console.error('[AUTH] Error getting access token:', error);
     return null;
   }
 }
