@@ -203,12 +203,9 @@ export async function getAccessToken() {
     
     const token = user.access_token;
     
-    // Проверяем, что токен валидный (JWT должен быть достаточно длинным)
-    if (token && token.length < 50) {
-      // Токен слишком короткий, возможно это не полный токен
-      return null;
-    }
-    
+    // Не блокируем короткие токены на клиенте
+    // Проверку формата сделает сервер
+    // Если токен есть, возвращаем его
     return token || null;
   } catch (error) {
     return null;

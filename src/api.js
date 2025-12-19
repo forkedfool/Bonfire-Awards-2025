@@ -20,11 +20,18 @@ import { getAccessToken } from './auth.js';
 let getAuthToken = async () => {
   try {
     const token = await getAccessToken();
-    // Проверяем, что токен валидный (JWT должен быть достаточно длинным)
-    if (token && token.length < 50) {
-      // Токен слишком короткий, возможно это не полный токен
-      return null;
+    
+    // Логируем для отладки (только если токен слишком короткий)
+    if (token && token.length < 100) {
+      console.warn('[TOKEN DEBUG] Short token detected:', {
+        length: token.length,
+        preview: token.substring(0, 30) + '...',
+        parts: token.split('.').length,
+      });
     }
+    
+    // Не блокируем короткие токены - возможно это валидный токен от Bonfire
+    // Проверку формата сделает сервер
     return token;
   } catch (error) {
     return null;

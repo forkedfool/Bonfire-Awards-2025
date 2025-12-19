@@ -19,8 +19,9 @@ export const config = {
   admin: {
     // Список ID админов (Bonfire user IDs, разделенные запятыми)
     // Пример: ADMIN_USER_IDS=user-id-1,user-id-2,user-id-3
+    // ID могут быть как строками, так и числами - нормализуем к строкам для сравнения
     userIds: process.env.ADMIN_USER_IDS 
-      ? process.env.ADMIN_USER_IDS.split(',').map(id => id.trim())
+      ? process.env.ADMIN_USER_IDS.split(',').map(id => String(id.trim()))
       : [],
   },
 };

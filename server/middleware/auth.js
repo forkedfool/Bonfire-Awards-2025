@@ -56,10 +56,11 @@ export async function verifyBonfireToken(req, res, next) {
     // Проверяем базовый формат токена (JWT должен иметь 3 части, разделенные точками)
     const tokenParts = token.split('.');
     if (tokenParts.length !== 3) {
-      console.error('[AUTH ERROR] Invalid token format:', {
+      console.error('[AUTH ERROR] Invalid token format - wrong parts count:', {
         tokenLength: token.length,
         partsCount: tokenParts.length,
-        tokenPreview: token.substring(0, 20) + '...',
+        tokenPreview: token.substring(0, 50) + '...',
+        fullToken: token, // Для отладки
       });
       return res.status(401).json({ 
         success: false,
@@ -68,10 +69,12 @@ export async function verifyBonfireToken(req, res, next) {
     }
     
     // Проверяем минимальную длину токена (JWT обычно длиннее 100 символов)
-    if (token.length < 50) {
+    // Но некоторые токены могут быть короче, поэтому снижаем порог до 20
+    if (token.length < 20) {
       console.error('[AUTH ERROR] Token too short:', {
         tokenLength: token.length,
         tokenPreview: token,
+        fullToken: token, // Для отладки
       });
       return res.status(401).json({ 
         success: false,

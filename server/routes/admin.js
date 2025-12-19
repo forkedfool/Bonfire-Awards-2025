@@ -19,26 +19,36 @@ router.get('/check', verifyBonfireToken, (req, res) => {
       });
     }
 
+    // Нормализуем User ID к строке для сравнения (ID может быть числом или строкой)
+    const normalizedUserId = String(userId);
+    
     // Детальное логирование для отладки
     console.log('=== ADMIN CHECK DEBUG ===');
-    console.log('User ID from token:', userId);
-    console.log('User ID type:', typeof userId);
+    console.log('User ID from token (raw):', userId);
+    console.log('User ID from token (type):', typeof userId);
+    console.log('User ID from token (normalized):', normalizedUserId);
     console.log('Admin IDs from config:', config.admin.userIds);
     console.log('Admin IDs count:', config.admin.userIds?.length || 0);
     
     // Проверяем каждый ID отдельно
     if (config.admin.userIds && config.admin.userIds.length > 0) {
       config.admin.userIds.forEach((adminId, index) => {
-        console.log(`Admin ID [${index}]: "${adminId}" (type: ${typeof adminId}, length: ${adminId.length})`);
-        console.log(`  Comparison with user ID: "${adminId}" === "${userId}" = ${adminId === userId}`);
-        console.log(`  Strict equality: ${adminId === userId}`);
-        console.log(`  Includes check: ${config.admin.userIds.includes(userId)}`);
+        const normalizedAdminId = String(adminId);
+        console.log(`Admin ID [${index}]: "${adminId}" (normalized: "${normalizedAdminId}")`);
+        console.log(`  Comparison: "${normalizedAdminId}" === "${normalizedUserId}" = ${normalizedAdminId === normalizedUserId}`);
+        console.log(`  Includes check (raw): ${config.admin.userIds.includes(userId)}`);
+        console.log(`  Includes check (normalized): ${config.admin.userIds.includes(normalizedUserId)}`);
       });
     } else {
       console.log('WARNING: ADMIN_USER_IDS is empty or not set!');
     }
     
-    const isAdmin = config.admin.userIds && config.admin.userIds.includes(userId);
+    // Сравниваем нормализованные значения
+    const isAdmin = config.admin.userIds && (
+      config.admin.userIds.includes(normalizedUserId) || 
+      config.admin.userIds.includes(userId) ||
+      config.admin.userIds.some(id => String(id) === normalizedUserId)
+    );
     
     console.log(`Result: Is Admin = ${isAdmin}`);
     console.log('========================');
