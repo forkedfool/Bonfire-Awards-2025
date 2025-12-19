@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Routes, Route, Link } from 'react-router-dom';
 import { 
   Flame, Scroll, Shield, Sword, Crown, Feather, 
-  Edit, Trash2, Plus, BarChart, Save, LogOut, ChevronRight, X 
+  Edit, Trash2, Plus, BarChart, Save, LogOut, ChevronRight, ChevronLeft, X, Check 
 } from 'lucide-react';
 import { categoriesAPI, votesAPI, adminAPI, setAuthTokenGetter } from './api.js';
 import { useAuth } from './AuthContext.jsx';
@@ -20,6 +20,9 @@ export default function BonfireAwardsApp() {
   const [votes, setVotes] = useState({});
   const [isLoading, setIsLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
+  
+  // Voting Navigation State
+  const [currentStep, setCurrentStep] = useState(0);
   
   // Admin Editing State
   const [editingCategory, setEditingCategory] = useState(null);
@@ -62,6 +65,7 @@ export default function BonfireAwardsApp() {
     if (isAuthenticated && user && view === 'landing') {
       // После успешной авторизации автоматически переходим на голосование
       setView('voting');
+      setCurrentStep(0);
     }
   }, [isAuthenticated, user, view]);
 
@@ -105,6 +109,13 @@ export default function BonfireAwardsApp() {
       throw error;
     }
   }
+
+  // Проверка границ currentStep при изменении categories
+  useEffect(() => {
+    if (categories.length > 0 && currentStep >= categories.length) {
+      setCurrentStep(0);
+    }
+  }, [categories.length, currentStep]);
 
   async function loadUserVotes() {
     try {
@@ -165,6 +176,21 @@ export default function BonfireAwardsApp() {
 
   const handleVote = (catId, nomId) => {
     setVotes(prev => ({ ...prev, [catId]: nomId }));
+  };
+
+  const handleNextStep = () => {
+    if (currentStep < categories.length - 1) {
+      setCurrentStep(prev => prev + 1);
+    }
+  };
+
+  const handlePrevStep = () => {
+    if (currentStep > 0) {
+      setCurrentStep(prev => prev - 1);
+    } else {
+      // If on first step, go back to landing
+      setView('landing');
+    }
   };
 
   const handleSubmit = async () => {
@@ -400,7 +426,23 @@ export default function BonfireAwardsApp() {
             </Link>
         
         <div className="flex items-center gap-4">
-          {isAuthenticated && user?.profile && (
+          {view === 'voting' && (
+             <div className="flex items-center gap-4">
+               {/* Progress Dots */}
+               <div className="hidden md:flex gap-1">
+                  {categories.map((_, idx) => (
+                    <div key={idx} className={`h-1 w-6 rounded-full transition-all ${idx === currentStep ? 'bg-[#FF5500]' : 'bg-[#333]'}`} />
+                  ))}
+               </div>
+               <button onClick={() => {
+                 setView('landing');
+                 setCurrentStep(0);
+               }} className="text-[#8A8580] hover:text-white transition-colors">
+                 <X size={24} />
+               </button>
+             </div>
+          )}
+          {isAuthenticated && user?.profile && view !== 'voting' && (
              <div className="flex items-center gap-3">
                <div className="flex items-center gap-2 text-xs font-heading text-[#8A8580] tracking-widest border border-[#3A3532] px-3 py-1">
                  <span className="w-1.5 h-1.5 bg-[#FF5500] rotate-45"></span>
@@ -468,7 +510,10 @@ export default function BonfireAwardsApp() {
 
             {isAuthenticated ? (
               <button 
-                onClick={() => setView('voting')}
+                onClick={() => {
+                  setView('voting');
+                  setCurrentStep(0);
+                }}
                 className="group relative px-12 py-5 bg-transparent border border-[#FF5500] text-[#FF5500] font-heading font-bold uppercase tracking-widest hover:bg-[#FF5500] hover:text-[#110F0E] transition-all duration-300"
               >
                 <div className="flex items-center gap-3">
@@ -490,7 +535,7 @@ export default function BonfireAwardsApp() {
           </header>
         )}
 
-        {/* === VOTING === */}
+        {/* === VOTING (SLIDER LAYOUT) === */}
         {!isLoading && !authLoading && view === 'voting' && (
           !isAuthenticated ? (
             <div className="flex flex-col items-center justify-center flex-grow text-center px-4">
@@ -510,122 +555,148 @@ export default function BonfireAwardsApp() {
                 Войти через Bonfire
               </button>
             </div>
-          ) : (
-          <main className="container mx-auto px-4 py-16 max-w-5xl">
-            <div className="text-center mb-20">
-              <h2 className="text-4xl font-heading font-bold uppercase mb-4 text-[#E8E6D1]">The Chronicles</h2>
-              <div className="h-px w-24 bg-[#FF5500] mx-auto"></div>
+          ) : categories.length === 0 ? (
+            <div className="flex flex-col items-center justify-center flex-grow text-center px-4">
+              <div className="text-center py-20 text-[#8A8580]">
+                <p>Категории пока не добавлены</p>
+              </div>
             </div>
+          ) : (
+          <main className="flex-grow flex flex-col items-center justify-center px-4 md:px-12 py-8 relative w-full h-full">
+            
+            {/* Desktop Arrows */}
+            <button 
+              onClick={handlePrevStep}
+              className="fixed left-4 md:left-8 top-1/2 -translate-y-1/2 p-4 text-[#555] hover:text-[#FF5500] transition-colors hidden md:block z-30"
+              title="Previous / Back to Home"
+            >
+              <ChevronLeft size={48} strokeWidth={1} />
+            </button>
+            
+            {currentStep < categories.length - 1 ? (
+              <button 
+                onClick={handleNextStep}
+                className="fixed right-4 md:right-8 top-1/2 -translate-y-1/2 p-4 text-[#555] hover:text-[#FF5500] transition-colors hidden md:block z-30"
+                title="Next Category"
+              >
+                <ChevronRight size={48} strokeWidth={1} />
+              </button>
+            ) : (
+               <button 
+                onClick={handleSubmit}
+                className="fixed right-8 top-1/2 -translate-y-1/2 p-4 text-[#FF5500] hover:text-white transition-colors hidden md:flex flex-col items-center gap-2 z-30"
+                title="Finish"
+              >
+                <Feather size={48} strokeWidth={1} />
+                <span className="text-[10px] font-heading uppercase tracking-widest">Finish</span>
+              </button>
+            )}
 
-            <div className="space-y-32">
-              {categories.length === 0 ? (
-                <div className="text-center py-20 text-[#8A8580]">
-                  <p>Категории пока не добавлены</p>
-                </div>
-              ) : (
-                categories.map((cat, idx) => (
-                <div key={cat.id} className="relative">
-                  {/* Decorative number */}
-                  <div className="absolute -left-4 -top-10 text-9xl font-heading text-[#1A1817] -z-10 select-none">
-                    {idx + 1}
-                  </div>
-
-                  <div className="flex flex-col items-center mb-12">
-                     <span className="text-[#FF5500] font-heading text-xs tracking-[0.2em] mb-2 uppercase">{cat.code || cat.subtitle || 'CATEGORY'}</span>
-                     <h3 className="text-3xl md:text-5xl font-heading text-[#E8E6D1]">{cat.title}</h3>
-                     {cat.description && (
-                       <p className="text-[#8A8580] text-sm font-body font-light italic mt-4 max-w-2xl text-center">
-                         {cat.description}
+            {/* Nomination Content */}
+            {categories[currentStep] && (
+              <div className="w-full max-w-6xl transition-all duration-500" key={categories[currentStep].id}>
+                  
+                  <div className="text-center mb-12 md:mb-20">
+                     <span className="text-[#FF5500] font-heading text-xs tracking-[0.3em] uppercase block mb-4 border-b border-[#FF5500]/30 pb-2 inline-block">
+                       {categories[currentStep].code || categories[currentStep].subtitle || 'CATEGORY'}
+                     </span>
+                     <h2 className="text-3xl md:text-6xl font-heading font-bold text-[#E8E6D1] uppercase drop-shadow-lg">
+                       {categories[currentStep].title}
+                     </h2>
+                     {categories[currentStep].description && (
+                       <p className="text-[#8A8580] text-sm font-body font-light italic mt-4 max-w-2xl mx-auto">
+                         {categories[currentStep].description}
                        </p>
                      )}
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                    {cat.nominees.map((nom) => {
-                      const isSelected = votes[cat.id] === nom.id;
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6 md:gap-8">
+                    {categories[currentStep].nominees.map((nominee) => {
+                      const isSelected = votes[categories[currentStep].id] === nominee.id;
                       return (
                         <div 
-                          key={nom.id}
-                          onClick={() => handleVote(cat.id, nom.id)}
+                          key={nominee.id}
+                          onClick={() => handleVote(categories[currentStep].id, nominee.id)}
                           className={`
-                            relative p-8 cursor-pointer transition-all duration-500 group
-                            ${isSelected 
-                              ? 'bg-[#1A1817] border border-[#FF5500] shadow-[0_0_30px_rgba(255,85,0,0.1)]' 
-                              : 'bg-transparent border border-[#3A3532] hover:border-[#8A8580]'
-                            }
+                            group relative flex flex-col items-center cursor-pointer transition-all duration-300
+                            ${isSelected ? 'scale-105' : 'hover:scale-[1.02] hover:-translate-y-2'}
                           `}
                         >
-                           {/* Selection Mark (Seal) */}
-                           <div className={`
-                             absolute -top-3 -right-3 w-8 h-8 rounded-full border flex items-center justify-center transition-all duration-300
-                             ${isSelected ? 'bg-[#FF5500] border-[#FF5500] text-[#110F0E]' : 'bg-[#110F0E] border-[#3A3532] text-transparent'}
-                           `}>
-                             <Feather size={14} />
-                           </div>
-
-                           {/* Image or placeholder */}
-                           {nom.imageUrl ? (
-                             <div className="w-full aspect-video bg-black border border-[#3A3532] mb-6 relative overflow-hidden">
-                               <img
-                                 src={nom.imageUrl}
-                                 alt={nom.name}
-                                 className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity"
-                               />
+                          {/* Avatar */}
+                          <div className={`
+                            relative w-full aspect-square mb-6 overflow-hidden border-2 transition-all duration-300 shadow-2xl bg-[#1A1817]
+                            ${isSelected ? 'border-[#FF5500] shadow-[0_0_30px_rgba(255,85,0,0.2)]' : 'border-[#3A3532] group-hover:border-[#8A8580]'}
+                          `}>
+                             {/* Placeholder Img or Icon */}
+                             <div className="w-full h-full flex items-center justify-center bg-[#0E0D0C] group-hover:bg-[#161413] transition-colors">
+                                {nominee.imageUrl ? (
+                                  <img src={nominee.imageUrl} alt={nominee.name} className="w-full h-full object-cover" />
+                                ) : (
+                                  <Shield size={48} className={`transition-colors ${isSelected ? 'text-[#FF5500]' : 'text-[#333]'}`} strokeWidth={1} />
+                                )}
                              </div>
-                           ) : (
-                             <div className="flex flex-col items-center text-center mb-6">
-                                <div className={`mb-6 p-4 rounded-full border ${isSelected ? 'border-[#FF5500] text-[#FF5500]' : 'border-[#3A3532] text-[#555]'}`}>
-                                   <Shield size={32} />
-                                </div>
-                             </div>
-                           )}
+                             
+                             {/* Selection Overlay */}
+                             {isSelected && (
+                               <div className="absolute inset-0 bg-[#FF5500]/10 flex items-center justify-center backdrop-blur-[1px]">
+                                 <div className="w-12 h-12 bg-[#FF5500] rounded-full flex items-center justify-center shadow-lg transition-all duration-200 scale-100">
+                                   <Check className="text-[#110F0E]" size={24} strokeWidth={3} />
+                                 </div>
+                               </div>
+                             )}
+                          </div>
 
-                           <div className="flex flex-col items-center text-center">
-                              <div className="mb-4">
-                                 <span className="text-[10px] font-heading text-[#8A8580] tracking-widest uppercase border-b border-[#3A3532] pb-1">
-                                   {nom.role}
-                                 </span>
-                              </div>
-                              
-                              <h4 className={`font-heading text-xl mb-3 ${isSelected ? 'text-[#E8E6D1]' : 'text-[#AAA]'}`}>
-                                {nom.name}
-                              </h4>
-                              
-                              <p className="text-[#666] text-sm font-body font-light italic leading-relaxed">
-                                "{nom.desc}"
-                              </p>
-                           </div>
+                          {/* Info */}
+                          <div className="text-center w-full px-2">
+                             <h3 className={`font-heading font-bold text-lg mb-2 truncate transition-colors ${isSelected ? 'text-[#FF5500]' : 'text-[#E8E6D1]'}`}>
+                               {nominee.name}
+                             </h3>
+                             <div className="flex items-center justify-center gap-2 text-[#888] text-xs font-body font-light uppercase tracking-wider mb-2">
+                                <span className="border-b border-[#333] pb-0.5">{nominee.role}</span>
+                             </div>
+                             <p className="text-[#555] text-xs font-body italic truncate">
+                               {nominee.desc}
+                             </p>
+                          </div>
                         </div>
-                      )
+                      );
                     })}
                     
-                    {/* Abstain / Skip */}
+                    {/* Abstain / Skip Option */}
                     <div 
-                      onClick={() => handleVote(cat.id, 'skip')}
+                      onClick={() => handleVote(categories[currentStep].id, 'skip')}
                       className={`
-                        border border-dashed border-[#3A3532] p-8 flex flex-col items-center justify-center cursor-pointer opacity-50 hover:opacity-100 transition-all
-                        ${votes[cat.id] === 'skip' ? 'border-[#E8E6D1] opacity-100' : ''}
+                        group relative flex flex-col items-center justify-center cursor-pointer transition-all duration-300 border-2 border-dashed
+                        ${votes[categories[currentStep].id] === 'skip' 
+                          ? 'border-[#E8E6D1] bg-[#1A1817]' 
+                          : 'border-[#3A3532] hover:border-[#8A8580]'
+                        }
+                        aspect-square
                       `}
                     >
                        <span className="font-heading text-sm text-[#8A8580] uppercase mb-2">Abstain</span>
                        <span className="text-[10px] font-body text-[#555]">Pass judgment later</span>
                     </div>
                   </div>
-                </div>
-                ))
-              )}
+              </div>
+            )}
+
+            {/* Mobile Footer Nav */}
+            <div className="md:hidden fixed bottom-0 left-0 right-0 p-4 bg-[#110F0E] border-t border-[#333] flex justify-between z-40">
+               <button onClick={handlePrevStep} className="text-[#E8E6D1] font-heading text-sm uppercase flex items-center gap-2">
+                 <ChevronLeft size={16} /> {currentStep === 0 ? 'Home' : 'Prev'}
+               </button>
+               {currentStep < categories.length - 1 ? (
+                 <button onClick={handleNextStep} className="text-[#FF5500] font-heading text-sm uppercase flex items-center gap-2">
+                   Next <ChevronRight size={16} />
+                 </button>
+               ) : (
+                 <button onClick={handleSubmit} className="text-[#FF5500] font-heading text-sm uppercase flex items-center gap-2">
+                   Finish <Feather size={16} />
+                 </button>
+               )}
             </div>
 
-            {/* Submit UI */}
-            <div className={`fixed bottom-12 left-0 right-0 flex justify-center pointer-events-none transition-all duration-500 ${Object.keys(votes).length > 0 ? 'translate-y-0 opacity-100' : 'translate-y-20 opacity-0'}`}>
-              <button 
-                onClick={handleSubmit}
-                className="pointer-events-auto bg-[#FF5500] text-[#110F0E] font-heading font-bold uppercase tracking-widest text-lg px-12 py-4 hover:bg-[#E8E6D1] transition-colors shadow-lg shadow-[#FF5500]/20 flex items-center gap-4"
-              >
-                <span>Seal the Votes ({Object.keys(votes).length})</span>
-                <Feather size={18} />
-              </button>
-            </div>
           </main>
           )
         )}
@@ -645,7 +716,10 @@ export default function BonfireAwardsApp() {
              </p>
              
              <button 
-               onClick={() => setView('landing')}
+               onClick={() => {
+                 setView('landing');
+                 setCurrentStep(0);
+               }}
                className="text-[#FF5500] hover:text-[#E8E6D1] font-heading text-sm uppercase tracking-widest transition-colors border-b border-transparent hover:border-[#E8E6D1]"
              >
                Return to Bonfire
@@ -661,7 +735,10 @@ export default function BonfireAwardsApp() {
                   <h2 className="text-2xl font-heading font-bold uppercase text-[#E8E6D1] mb-2">The Archives</h2>
                   <p className="text-[#555] font-heading text-xs tracking-widest">MANAGE THE REALM</p>
                </div>
-               <button onClick={() => setView('landing')} className="flex items-center gap-2 text-red-900 hover:text-red-500 font-heading text-xs border border-red-900/30 px-4 py-2">
+               <button onClick={() => {
+                 setView('landing');
+                 setCurrentStep(0);
+               }} className="flex items-center gap-2 text-red-900 hover:text-red-500 font-heading text-xs border border-red-900/30 px-4 py-2">
                  <LogOut size={12} /> LEAVE
                </button>
             </div>
@@ -864,6 +941,7 @@ export default function BonfireAwardsApp() {
       </div>
 
       {/* FOOTER */}
+      {view !== 'voting' && (
       <footer className="relative z-20 bg-[#0E0D0C] border-t border-[#3A3532] pb-12">
          {/* Marquee */}
          <div className="overflow-hidden border-b border-[#3A3532] py-3 bg-[#161413]">
@@ -907,6 +985,7 @@ export default function BonfireAwardsApp() {
             </div>
          </div>
       </footer>
+      )}
         </div>
       } />
     </Routes>
