@@ -33,7 +33,7 @@ export async function verifyBonfireToken(req, res, next) {
     if (!authHeader) {
       return res.status(401).json({ 
         success: false,
-        error: 'No authorization header provided' 
+        error: 'No authorization header' 
       });
     }
     
@@ -53,6 +53,15 @@ export async function verifyBonfireToken(req, res, next) {
       });
     }
     
+    // ДЕТАЛЬНОЕ ЛОГИРОВАНИЕ ДЛЯ ОТЛАДКИ
+    console.log('[TOKEN DEBUG] Received token:', {
+      length: token.length,
+      firstChars: token.substring(0, 50),
+      lastChars: token.substring(Math.max(0, token.length - 20)),
+      partsCount: token.split('.').length,
+      isJWT: token.split('.').length === 3,
+    });
+    
     // Проверяем базовый формат токена (JWT должен иметь 3 части, разделенные точками)
     const tokenParts = token.split('.');
     if (tokenParts.length !== 3) {
@@ -60,7 +69,7 @@ export async function verifyBonfireToken(req, res, next) {
         tokenLength: token.length,
         partsCount: tokenParts.length,
         tokenPreview: token.substring(0, 50) + '...',
-        fullToken: token, // Для отладки
+        fullToken: token, // Для отладки - показываем полный токен
       });
       return res.status(401).json({ 
         success: false,
@@ -68,8 +77,8 @@ export async function verifyBonfireToken(req, res, next) {
       });
     }
     
-    // Проверяем минимальную длину токена (JWT обычно длиннее 100 символов)
-    // Но некоторые токены могут быть короче, поэтому снижаем порог до 20
+    // Проверяем минимальную длину токена
+    // Снижаем порог до 20, так как некоторые токены могут быть короче
     if (token.length < 20) {
       console.error('[AUTH ERROR] Token too short:', {
         tokenLength: token.length,

@@ -19,21 +19,9 @@ import { getAccessToken } from './auth.js';
 
 let getAuthToken = async () => {
   try {
-    const token = await getAccessToken();
-    
-    // Логируем для отладки (только если токен слишком короткий)
-    if (token && token.length < 100) {
-      console.warn('[TOKEN DEBUG] Short token detected:', {
-        length: token.length,
-        preview: token.substring(0, 30) + '...',
-        parts: token.split('.').length,
-      });
-    }
-    
-    // Не блокируем короткие токены - возможно это валидный токен от Bonfire
-    // Проверку формата сделает сервер
-    return token;
+    return await getAccessToken();
   } catch (error) {
+    console.error('Ошибка получения токена:', error);
     return null;
   }
 };
@@ -42,6 +30,17 @@ let getAuthToken = async () => {
 async function apiRequest(endpoint, options = {}) {
   const url = `${API_BASE_URL}${endpoint}`;
   const token = await getAuthToken();
+  
+  // ЛОГИРОВАНИЕ ДЛЯ ОТЛАДКИ
+  if (endpoint.includes('/admin/check')) {
+    console.log('[API REQUEST DEBUG]', {
+      endpoint,
+      hasToken: !!token,
+      tokenLength: token?.length || 0,
+      tokenPreview: token ? token.substring(0, 30) + '...' : 'none',
+      tokenParts: token ? token.split('.').length : 0,
+    });
+  }
   
   const config = {
     ...options,
@@ -54,7 +53,13 @@ async function apiRequest(endpoint, options = {}) {
   };
 
   try {
+    console.log('API Request:', url, config.method || 'GET', {
+      hasToken: !!token,
+      tokenLength: token ? token.length : 0,
+    });
     const response = await fetchWithTimeout(url, config, API_TIMEOUT);
+    
+    console.log('API Response status:', response.status, response.statusText);
     
     // Читаем ответ как текст сначала, чтобы можно было парсить JSON или обработать ошибку
     const responseText = await response.text();
@@ -130,6 +135,7 @@ async function apiRequest(endpoint, options = {}) {
       throw error;
     }
     
+    console.error('API Error:', error);
     throw new Error('Произошла ошибка при выполнении запроса');
   }
 }
@@ -181,7 +187,10 @@ export const votesAPI = {
 
 // Админка
 export const adminAPI = {
-  checkAdmin: () => apiRequest('/admin/check'),
+  verifyPassword: (password) => apiRequest('/admin/verify', {
+    method: 'POST',
+    body: JSON.stringify({ password }),
+  }),
 };
 
 // Установка функции для получения токена (будет использоваться позже)
