@@ -153,5 +153,50 @@ router.post('/exchange-token', urlencodedParser, async (req, res) => {
   }
 });
 
+// Получить userinfo через бэкенд (для обхода CORS)
+router.post('/userinfo', async (req, res) => {
+  try {
+    const { access_token } = req.body;
+
+    if (!access_token) {
+      return res.status(400).json({ 
+        success: false,
+        error: 'access_token is required' 
+      });
+    }
+
+    // Получаем userinfo от Bonfire
+    const userInfoResponse = await fetch('https://api.bonfire.moe/openid/userinfo', {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${access_token}`,
+        'Accept': 'application/json',
+      },
+    });
+
+    if (!userInfoResponse.ok) {
+      const errorText = await userInfoResponse.text();
+      console.error('UserInfo error:', errorText);
+      return res.status(userInfoResponse.status).json({ 
+        success: false,
+        error: 'Failed to get userinfo',
+        details: errorText 
+      });
+    }
+
+    const userInfo = await userInfoResponse.json();
+    res.json({
+      success: true,
+      userinfo: userInfo,
+    });
+  } catch (error) {
+    console.error('Error getting userinfo:', error);
+    res.status(500).json({ 
+      success: false,
+      error: error.message || 'Internal server error' 
+    });
+  }
+});
+
 export default router;
 

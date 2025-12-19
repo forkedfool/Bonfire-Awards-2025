@@ -1,4 +1,4 @@
-import { UserManager, WebStorageStateStore } from 'oidc-client';
+import { UserManager, WebStorageStateStore, User } from 'oidc-client';
 
 // Конфигурация Bonfire OpenID Connect
 // authority должен указывать на базовый URL провайдера
@@ -262,20 +262,40 @@ export async function handleCallback() {
         
         try {
           // Получаем code_verifier из localStorage
-          // oidc-client хранит его в ключе вида oidc.{state}
-          const stateKey = Object.keys(localStorage).find(key => key.includes(state));
+          // oidc-client хранит его в ключе вида oidc.{state} или oidc.user:{authority}:{client_id}
           let codeVerifier = null;
           
-          if (stateKey) {
+          // Пробуем найти по state
+          const stateKey = `oidc.${state}`;
+          try {
+            const storedData = localStorage.getItem(stateKey);
+            if (storedData) {
+              const parsed = JSON.parse(storedData);
+              // code_verifier может быть в разных местах в зависимости от версии oidc-client
+              codeVerifier = parsed.code_verifier || parsed.codeVerifier || parsed.codeVerifier || null;
+            }
+          } catch (e) {
+            console.warn('Не удалось прочитать state из localStorage:', e);
+          }
+          
+          // Если не нашли, пробуем найти в других ключах oidc
+          if (!codeVerifier) {
             try {
-              const storedData = localStorage.getItem(stateKey);
-              if (storedData) {
-                const parsed = JSON.parse(storedData);
-                // code_verifier может быть в разных местах в зависимости от версии oidc-client
-                codeVerifier = parsed.code_verifier || parsed.codeVerifier || null;
+              const oidcKeys = Object.keys(localStorage).filter(key => key.startsWith('oidc.'));
+              for (const key of oidcKeys) {
+                try {
+                  const data = JSON.parse(localStorage.getItem(key));
+                  if (data && (data.code_verifier || data.codeVerifier)) {
+                    codeVerifier = data.code_verifier || data.codeVerifier;
+                    console.log('Найден code_verifier в ключе:', key);
+                    break;
+                  }
+                } catch (e) {
+                  // Игнорируем ошибки парсинга
+                }
               }
             } catch (e) {
-              console.warn('Не удалось прочитать state из localStorage:', e);
+              console.warn('Ошибка при поиске code_verifier:', e);
             }
           }
           
@@ -317,28 +337,33 @@ export async function handleCallback() {
             hasRefreshToken: !!tokens.refresh_token,
           });
           
-          // Создаем User объект вручную
-          // Нужно получить userinfo и создать объект User
+          // Получаем userinfo через бэкенд (для обхода CORS) или декодируем из id_token
           let userInfo = {};
+          
+          // Сначала пробуем получить через бэкенд
           if (tokens.access_token) {
             try {
-              const userInfoResponse = await fetch('https://api.bonfire.moe/openid/userinfo', {
+              const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+              const userInfoResponse = await fetch(`${API_BASE_URL}/auth/userinfo`, {
+                method: 'POST',
                 headers: {
-                  'Authorization': `Bearer ${tokens.access_token}`,
+                  'Content-Type': 'application/json',
                 },
+                body: JSON.stringify({
+                  access_token: tokens.access_token,
+                }),
               });
               
               if (userInfoResponse.ok) {
-                userInfo = await userInfoResponse.json();
-              } else {
-                console.warn('Не удалось получить userinfo, используем данные из id_token');
+                const userInfoData = await userInfoResponse.json();
+                userInfo = userInfoData.userinfo || userInfoData;
               }
             } catch (userInfoError) {
-              console.warn('Ошибка при получении userinfo:', userInfoError);
+              console.warn('Не удалось получить userinfo через бэкенд:', userInfoError);
             }
           }
           
-          // Декодируем id_token если нужно
+          // Если userinfo не получен, декодируем из id_token
           if (tokens.id_token && !userInfo.sub) {
             try {
               const idTokenParts = tokens.id_token.split('.');
@@ -351,22 +376,23 @@ export async function handleCallback() {
             }
           }
           
-          // Создаем User объект в формате oidc-client
+          // User класс уже импортирован в начале файла
           const expiresAt = tokens.expires_in 
             ? Math.floor(Date.now() / 1000) + tokens.expires_in 
             : null;
           
-          user = {
+          // Создаем User объект через конструктор User класса
+          user = new User({
             id_token: tokens.id_token,
             access_token: tokens.access_token,
-            refresh_token: tokens.refresh_token,
+            refresh_token: tokens.refresh_token || null,
             token_type: tokens.token_type || 'Bearer',
             scope: tokens.scope || config.scope,
             expires_at: expiresAt,
             profile: userInfo,
             state: state,
             session_state: null,
-          };
+          });
           
           // Сохраняем пользователя в хранилище
           await manager.storeUser(user);
