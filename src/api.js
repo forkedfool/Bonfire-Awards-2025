@@ -214,14 +214,18 @@ export const nomineesAPI = {
       body: JSON.stringify(payload),
     });
   },
-  update: (id, name, desc, role, imageUrl) => apiRequest(`/admin/nominees/${id}`, {
-    method: 'PUT',
-    body: JSON.stringify({ 
+  update: (id, name, desc, role, imageUrl) => {
+    const payload = { 
       name, 
       description: desc || role ? JSON.stringify({ desc: desc || '', role: role || '' }) : null,
-      image_url: imageUrl || null 
-    }),
-  }),
+      image_url: imageUrl && imageUrl.trim() !== '' ? imageUrl.trim() : null 
+    };
+    console.log('[API] Updating nominee with payload:', { id, ...payload });
+    return apiRequest(`/admin/nominees/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    });
+  },
   delete: (id) => apiRequest(`/admin/nominees/${id}`, {
     method: 'DELETE',
   }),

@@ -324,24 +324,42 @@ router.put('/nominees/:id', async (req, res) => {
     const { id } = req.params;
     const { name, description, image_url } = req.body;
 
+    console.log('[ADMIN] PUT /nominees/:id - Received:', { id, name, description, image_url, body: req.body });
+
+    // Обрабатываем image_url - может прийти как image_url или imageUrl
+    const processedImageUrl = image_url && String(image_url).trim() !== '' ? String(image_url).trim() : null;
+    console.log('[ADMIN] Processed image_url for DB:', processedImageUrl);
+
+    const updateData = {};
+    if (name !== undefined) updateData.name = name;
+    if (description !== undefined) updateData.description = description;
+    if (image_url !== undefined) updateData.image_url = processedImageUrl;
+
     const { data, error } = await supabase
       .from(TABLES.NOMINEES)
-      .update({ name, description, image_url })
+      .update(updateData)
       .eq('id', id)
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) {
+      console.error('[ADMIN] Error updating nominee:', error);
+      throw error;
+    }
     if (!data) {
       return res.status(404).json({ error: 'Nominee not found' });
     }
 
+    console.log('[ADMIN] Updated nominee in DB:', { id: data.id, name: data.name, image_url: data.image_url });
+
     // Преобразуем ответ для фронтенда
     const response = {
       ...data,
-      imageUrl: data.image_url,
+      imageUrl: data.image_url || null,
     };
     delete response.image_url;
+    
+    console.log('[ADMIN] Returning response:', { id: response.id, name: response.name, imageUrl: response.imageUrl });
     
     // Парсим description для извлечения desc и role
     if (data.description) {

@@ -44,6 +44,8 @@ export default function BonfireAwardsApp() {
   const [nomineeSearchQuery, setNomineeSearchQuery] = useState('');
   const [isAddingNomineeToCategory, setIsAddingNomineeToCategory] = useState(false);
   const [adminView, setAdminView] = useState('categories'); // 'categories' or 'nominees'
+  const [editingNominee, setEditingNominee] = useState(null);
+  const [editingNomineeData, setEditingNomineeData] = useState({ name: '', desc: '', role: '', imageUrl: '' });
   
   // Voting Status State
   const [votingEnabled, setVotingEnabled] = useState(true);
@@ -434,6 +436,48 @@ export default function BonfireAwardsApp() {
       await loadAllNominees();
     } catch (error) {
       alert('Ошибка создания номинанта: ' + error.message);
+    }
+  };
+
+  const handleEditNominee = (nominee) => {
+    setEditingNominee(nominee.id);
+    setEditingNomineeData({
+      name: nominee.name || '',
+      desc: nominee.desc || '',
+      role: nominee.role || '',
+      imageUrl: nominee.imageUrl || ''
+    });
+  };
+
+  const handleCancelEditNominee = () => {
+    setEditingNominee(null);
+    setEditingNomineeData({ name: '', desc: '', role: '', imageUrl: '' });
+  };
+
+  const handleUpdateNominee = async () => {
+    if (!editingNominee || !editingNomineeData.name) return;
+    try {
+      const userId = user?.profile?.sub;
+      console.log('[FRONTEND] Updating nominee with data:', { 
+        id: editingNominee,
+        name: editingNomineeData.name, 
+        desc: editingNomineeData.desc, 
+        role: editingNomineeData.role, 
+        imageUrl: editingNomineeData.imageUrl 
+      });
+      await nomineesAPI.update(
+        editingNominee,
+        editingNomineeData.name,
+        editingNomineeData.desc,
+        editingNomineeData.role,
+        editingNomineeData.imageUrl || null
+      );
+      console.log(`[ADMIN ACTION] User ID: ${userId || 'unknown'}, Action: update nominee, ID: ${editingNominee}`);
+      setEditingNominee(null);
+      setEditingNomineeData({ name: '', desc: '', role: '', imageUrl: '' });
+      await loadAllNominees();
+    } catch (error) {
+      alert('Ошибка обновления номинанта: ' + error.message);
     }
   };
 
@@ -1343,24 +1387,85 @@ export default function BonfireAwardsApp() {
                     <p className="text-[#555] text-sm font-body italic">Номинантов пока нет. Создайте одного выше.</p>
                   ) : (
                     allNominees.map(nom => (
-                      <div key={nom.id} className="border border-[#3A3532] p-4 flex justify-between items-center group hover:border-[#555] transition-colors">
-                        <div className="flex-grow">
-                          <div className="flex items-center gap-3 mb-2">
-                            <span className="font-heading font-bold text-[#E8E6D1]">{nom.name}</span>
-                            {nom.role && (
-                              <span className="text-[9px] font-heading bg-[#222] px-2 py-0.5 text-[#888] tracking-wider">{nom.role}</span>
+                      <div key={nom.id}>
+                        <div className="border border-[#3A3532] p-4 flex justify-between items-center group hover:border-[#555] transition-colors">
+                          <div className="flex-grow">
+                            <div className="flex items-center gap-3 mb-2">
+                              <span className="font-heading font-bold text-[#E8E6D1]">{nom.name}</span>
+                              {nom.role && (
+                                <span className="text-[9px] font-heading bg-[#222] px-2 py-0.5 text-[#888] tracking-wider">{nom.role}</span>
+                              )}
+                            </div>
+                            {nom.desc && (
+                              <p className="text-[#666] text-xs font-body italic">{nom.desc}</p>
+                            )}
+                            {nom.imageUrl && (
+                              <p className="text-[#555] text-[10px] font-body mt-1 truncate max-w-md">{nom.imageUrl}</p>
                             )}
                           </div>
-                          {nom.desc && (
-                            <p className="text-[#666] text-xs font-body italic">{nom.desc}</p>
-                          )}
+                          <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-all">
+                            <button 
+                              onClick={() => handleEditNominee(nom)} 
+                              className="text-[#555] hover:text-[#FF5500] transition-colors"
+                              title="Редактировать"
+                            >
+                              <Edit size={16} />
+                            </button>
+                            <button 
+                              onClick={() => handleDeleteNomineeStandalone(nom.id)} 
+                              className="text-[#555] hover:text-red-500 transition-colors"
+                              title="Удалить"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </div>
                         </div>
-                        <button 
-                          onClick={() => handleDeleteNomineeStandalone(nom.id)} 
-                          className="text-[#555] hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all"
-                        >
-                          <Trash2 size={16} />
-                        </button>
+                        {editingNominee === nom.id && (
+                          <div className="mt-2 p-4 bg-[#161413] border border-[#3A3532] rounded">
+                            <div className="flex flex-col gap-3">
+                              <div className="flex gap-3">
+                                <input 
+                                  placeholder="Имя" 
+                                  className="flex-1 bg-transparent border-b border-[#3A3532] py-2 text-sm text-[#E8E6D1] focus:border-[#FF5500] outline-none font-heading" 
+                                  value={editingNomineeData.name} 
+                                  onChange={(e) => setEditingNomineeData({...editingNomineeData, name: e.target.value})} 
+                                />
+                                <input 
+                                  placeholder="Титул/Роль" 
+                                  className="flex-1 bg-transparent border-b border-[#3A3532] py-2 text-sm text-[#E8E6D1] focus:border-[#FF5500] outline-none font-heading" 
+                                  value={editingNomineeData.role} 
+                                  onChange={(e) => setEditingNomineeData({...editingNomineeData, role: e.target.value})} 
+                                />
+                              </div>
+                              <input 
+                                placeholder="URL изображения (необязательно)" 
+                                className="w-full bg-transparent border-b border-[#3A3532] py-2 text-sm text-[#E8E6D1] focus:border-[#FF5500] outline-none font-body" 
+                                value={editingNomineeData.imageUrl} 
+                                onChange={(e) => setEditingNomineeData({...editingNomineeData, imageUrl: e.target.value})} 
+                              />
+                              <input 
+                                placeholder="Легенда (Описание)" 
+                                className="w-full bg-transparent border-b border-[#3A3532] py-2 text-sm text-[#E8E6D1] focus:border-[#FF5500] outline-none font-body" 
+                                value={editingNomineeData.desc} 
+                                onChange={(e) => setEditingNomineeData({...editingNomineeData, desc: e.target.value})} 
+                              />
+                              <div className="flex gap-2">
+                                <button 
+                                  onClick={handleUpdateNominee} 
+                                  className="flex-1 bg-[#FF5500] hover:bg-[#FF4400] text-[#110F0E] font-heading text-xs uppercase py-2 transition-colors flex items-center justify-center gap-2 tracking-widest"
+                                >
+                                  <Save size={14} /> Сохранить
+                                </button>
+                                <button 
+                                  onClick={handleCancelEditNominee} 
+                                  className="flex-1 bg-[#333] hover:bg-[#444] text-[#E8E6D1] font-heading text-xs uppercase py-2 transition-colors flex items-center justify-center gap-2 tracking-widest"
+                                >
+                                  <X size={14} /> Отмена
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     ))
                   )}
