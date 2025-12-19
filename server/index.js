@@ -39,31 +39,99 @@ app.get('/api/categories', (req, res, next) => {
   });
 });
 
+// Админские операции с категориями (требуют админских прав)
+// Проксируем к админ-роутеру
+app.post('/api/categories', (req, res, next) => {
+  const originalUrl = req.url;
+  const originalBaseUrl = req.baseUrl;
+  req.url = '/categories';
+  req.baseUrl = '/api/admin';
+  adminRouter(req, res, (err) => {
+    req.url = originalUrl;
+    req.baseUrl = originalBaseUrl;
+    if (err) next(err);
+  });
+});
+
+app.put('/api/categories/:id', (req, res, next) => {
+  const originalUrl = req.url;
+  const originalBaseUrl = req.baseUrl;
+  const originalParams = { ...req.params };
+  req.url = `/categories/${req.params.id}`;
+  req.baseUrl = '/api/admin';
+  req.params = { id: req.params.id };
+  adminRouter(req, res, (err) => {
+    req.url = originalUrl;
+    req.baseUrl = originalBaseUrl;
+    req.params = originalParams;
+    if (err) next(err);
+  });
+});
+
+app.delete('/api/categories/:id', (req, res, next) => {
+  const originalUrl = req.url;
+  const originalBaseUrl = req.baseUrl;
+  const originalParams = { ...req.params };
+  req.url = `/categories/${req.params.id}`;
+  req.baseUrl = '/api/admin';
+  req.params = { id: req.params.id };
+  adminRouter(req, res, (err) => {
+    req.url = originalUrl;
+    req.baseUrl = originalBaseUrl;
+    req.params = originalParams;
+    if (err) next(err);
+  });
+});
+
 // Прокси для управления номинантами в категориях (требует админских прав)
 // Маршрутизируем /api/categories/:categoryId/nominees к /api/admin/categories/:categoryId/nominees
 app.post('/api/categories/:categoryId/nominees', (req, res, next) => {
   const originalUrl = req.url;
+  const originalBaseUrl = req.baseUrl;
+  const originalParams = { ...req.params };
   req.url = `/categories/${req.params.categoryId}/nominees`;
+  req.baseUrl = '/api/admin';
+  req.params = { categoryId: req.params.categoryId };
   adminRouter(req, res, (err) => {
     req.url = originalUrl;
+    req.baseUrl = originalBaseUrl;
+    req.params = originalParams;
     if (err) next(err);
   });
 });
 
 app.put('/api/categories/:categoryId/nominees/:nomineeId', (req, res, next) => {
   const originalUrl = req.url;
+  const originalBaseUrl = req.baseUrl;
+  const originalParams = { ...req.params };
   req.url = `/categories/${req.params.categoryId}/nominees/${req.params.nomineeId}`;
+  req.baseUrl = '/api/admin';
+  req.params = { 
+    categoryId: req.params.categoryId,
+    nomineeId: req.params.nomineeId 
+  };
   adminRouter(req, res, (err) => {
     req.url = originalUrl;
+    req.baseUrl = originalBaseUrl;
+    req.params = originalParams;
     if (err) next(err);
   });
 });
 
 app.delete('/api/categories/:categoryId/nominees/:nomineeId', (req, res, next) => {
   const originalUrl = req.url;
+  const originalBaseUrl = req.baseUrl;
+  const originalParams = { ...req.params };
   req.url = `/categories/${req.params.categoryId}/nominees/${req.params.nomineeId}`;
+  req.baseUrl = '/api/admin';
+  req.params = { 
+    categoryId: req.params.categoryId,
+    nomineeId: req.params.nomineeId 
+  };
   adminRouter(req, res, (err) => {
     req.url = originalUrl;
+    req.baseUrl = originalBaseUrl;
+    req.params = originalParams;
     if (err) next(err);
   });
 });
