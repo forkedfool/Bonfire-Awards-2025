@@ -86,6 +86,22 @@ export default function BonfireAwardsApp() {
     }
   }, [isAuthenticated, user, view, categories.length]);
 
+  // Загружаем статус голосования при переходе на страницу голосования и периодически
+  useEffect(() => {
+    if (view === 'voting' || view === 'landing') {
+      loadVotingStatus();
+    }
+    
+    // Периодически обновляем статус (каждые 5 секунд)
+    const interval = setInterval(() => {
+      if (view === 'voting' || view === 'landing') {
+        loadVotingStatus();
+      }
+    }, 5000);
+    
+    return () => clearInterval(interval);
+  }, [view]);
+
   async function loadInitialData() {
     try {
       setIsLoading(true);
@@ -225,10 +241,21 @@ export default function BonfireAwardsApp() {
   const handleToggleVoting = async () => {
     try {
       const newStatus = !votingEnabled;
-      await adminAPI.setVotingStatus(newStatus);
-      setVotingEnabled(newStatus);
-      console.log(`[ADMIN ACTION] Voting ${newStatus ? 'enabled' : 'disabled'}`);
+      console.log(`[ADMIN] Attempting to set voting status to: ${newStatus}`);
+      const result = await adminAPI.setVotingStatus(newStatus);
+      console.log(`[ADMIN] Server response:`, result);
+      
+      // Обновляем состояние на основе ответа сервера
+      if (result && result.votingEnabled !== undefined) {
+        setVotingEnabled(result.votingEnabled);
+        console.log(`[ADMIN ACTION] Voting ${result.votingEnabled ? 'enabled' : 'disabled'}`);
+      } else {
+        // Если сервер не вернул статус, используем то, что отправили
+        setVotingEnabled(newStatus);
+        console.log(`[ADMIN ACTION] Voting ${newStatus ? 'enabled' : 'disabled'} (using local state)`);
+      }
     } catch (error) {
+      console.error('[ADMIN] Error toggling voting:', error);
       alert('Ошибка изменения статуса голосования: ' + error.message);
     }
   };

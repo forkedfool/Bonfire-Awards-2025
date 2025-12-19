@@ -680,34 +680,72 @@ router.get('/voting-status', async (req, res) => {
 router.put('/voting-status', async (req, res) => {
   try {
     const { enabled } = req.body;
+    console.log('[ADMIN] Updating voting status:', { enabled, type: typeof enabled });
 
     if (typeof enabled !== 'boolean') {
       return res.status(400).json({ error: 'enabled must be a boolean' });
     }
 
-    // Используем upsert для создания или обновления настройки
-    const { data, error } = await supabase
+    // Сначала проверяем, существует ли запись
+    const { data: existing, error: checkError } = await supabase
       .from(TABLES.SETTINGS)
-      .upsert(
-        { 
+      .select('*')
+      .eq('key', 'voting_enabled')
+      .single();
+
+    console.log('[ADMIN] Existing setting:', existing);
+
+    let data, error;
+
+    if (checkError && checkError.code === 'PGRST116') {
+      // Запись не существует, создаем новую
+      console.log('[ADMIN] Creating new setting');
+      const result = await supabase
+        .from(TABLES.SETTINGS)
+        .insert({ 
           key: 'voting_enabled', 
           value: enabled.toString(),
           updated_at: new Date().toISOString()
-        },
-        { onConflict: 'key' }
-      )
-      .select()
-      .single();
+        })
+        .select()
+        .single();
+      data = result.data;
+      error = result.error;
+    } else if (checkError) {
+      throw checkError;
+    } else {
+      // Запись существует, обновляем
+      console.log('[ADMIN] Updating existing setting');
+      const result = await supabase
+        .from(TABLES.SETTINGS)
+        .update({ 
+          value: enabled.toString(),
+          updated_at: new Date().toISOString()
+        })
+        .eq('key', 'voting_enabled')
+        .select()
+        .single();
+      data = result.data;
+      error = result.error;
+    }
 
-    if (error) throw error;
+    if (error) {
+      console.error('[ADMIN] Database error:', error);
+      throw error;
+    }
+
+    console.log('[ADMIN] Successfully updated voting status:', data);
 
     res.json({ 
       success: true,
       votingEnabled: enabled 
     });
   } catch (error) {
-    console.error('Error updating voting status:', error);
-    res.status(500).json({ error: error.message });
+    console.error('[ADMIN] Error updating voting status:', error);
+    res.status(500).json({ 
+      success: false,
+      error: error.message 
+    });
   }
 });
 

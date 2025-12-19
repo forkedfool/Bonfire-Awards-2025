@@ -18,7 +18,13 @@ router.get('/voting-status', async (req, res) => {
     }
 
     // По умолчанию голосование включено, если настройка не найдена
-    const votingEnabled = data?.value === 'true' || !data;
+    // Значение хранится как строка, поэтому проверяем явно
+    let votingEnabled = true;
+    if (data && data.value) {
+      votingEnabled = data.value === 'true' || data.value === true;
+    }
+    
+    console.log('[VOTING STATUS] Fetched from DB:', { value: data?.value, votingEnabled });
     
     res.json({ 
       success: true,
