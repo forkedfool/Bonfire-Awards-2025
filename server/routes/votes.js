@@ -242,6 +242,40 @@ router.post('/submit', verifyBonfireToken, async (req, res) => {
     // Обрабатываем каждый голос
     for (const [categoryId, nomineeId] of voteEntries) {
       try {
+        // Если пользователь выбрал "abstain" (skip), удаляем существующий голос, если есть
+        if (nomineeId === 'skip' || nomineeId === null || nomineeId === undefined) {
+          // Проверяем, есть ли существующий голос
+          const { data: existingVote, error: checkError } = await supabase
+            .from(TABLES.VOTES)
+            .select('*')
+            .eq('user_id', userId)
+            .eq('category_id', categoryId)
+            .single();
+
+          if (checkError && checkError.code !== 'PGRST116') {
+            // Если ошибка не "не найдено", логируем, но продолжаем
+            console.log(`[VOTE] Error checking existing vote for skip: ${checkError.message}`);
+          }
+
+          if (existingVote) {
+            // Удаляем существующий голос
+            const { error: deleteError } = await supabase
+              .from(TABLES.VOTES)
+              .delete()
+              .eq('id', existingVote.id);
+
+            if (deleteError) {
+              errors.push({ categoryId, error: deleteError.message });
+            } else {
+              results.push({ categoryId, abstained: true, removed: true });
+            }
+          } else {
+            // Голоса не было, просто отмечаем как пропущенное
+            results.push({ categoryId, abstained: true });
+          }
+          continue;
+        }
+
         // Проверяем, что номинант принадлежит категории
         const { data: relation, error: relationError } = await supabase
           .from(TABLES.CATEGORY_NOMINEES)
