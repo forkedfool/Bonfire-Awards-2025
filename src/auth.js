@@ -487,6 +487,9 @@ export async function handleCallback() {
             // Токен слишком короткий, возможно проблема с сохранением
             console.error('[AUTH ERROR] Token too short after save:', savedUser.access_token.length);
           }
+          
+          // Возвращаем пользователя для использования в компонентах
+          return user;
         } catch (manualError) {
           console.error('Ошибка при ручном обмене токенов:', manualError);
           // Пробрасываем более информативную ошибку

@@ -39,6 +39,18 @@ export function AuthProvider({ children }) {
       setIsLoading(true);
       const currentUser = await getCurrentUser();
       setUser(currentUser);
+      
+      // Выводим информацию об аккаунте после загрузки
+      if (currentUser && currentUser.profile) {
+        console.log('=== ИНФОРМАЦИЯ ОБ АККАУНТЕ ===');
+        console.log('User ID (sub):', currentUser.profile.sub);
+        console.log('Email:', currentUser.profile.email || 'не указан');
+        console.log('Username:', currentUser.profile.preferred_username || currentUser.profile.name || 'не указан');
+        console.log('Email Verified:', currentUser.profile.email_verified ? 'да' : 'нет');
+        console.log('\n📋 Для добавления в админы, добавьте в .env на сервере:');
+        console.log(`ADMIN_USER_IDS=${currentUser.profile.sub}`);
+        console.log('================================');
+      }
     } catch (error) {
       console.error('Ошибка загрузки пользователя:', error);
       setUser(null);

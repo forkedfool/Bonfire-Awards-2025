@@ -23,9 +23,22 @@ export default function AuthCallback() {
       processedRef.current = true;
 
       try {
-        await handleCallback();
+        const user = await handleCallback();
         // Перезагружаем пользователя после успешного callback
         await loadUser();
+        
+        // Выводим информацию об аккаунте после успешной авторизации
+        if (user && user.profile) {
+          console.log('=== УСПЕШНАЯ АВТОРИЗАЦИЯ ===');
+          console.log('User ID (sub):', user.profile.sub);
+          console.log('Email:', user.profile.email || 'не указан');
+          console.log('Username:', user.profile.preferred_username || user.profile.name || 'не указан');
+          console.log('Access Token:', user.access_token ? `${user.access_token.substring(0, 20)}... (${user.access_token.length} символов)` : 'отсутствует');
+          console.log('\n📋 Для добавления в админы, добавьте в .env на сервере:');
+          console.log(`ADMIN_USER_IDS=${user.profile.sub}`);
+          console.log('================================');
+        }
+        
         // Небольшая задержка для обновления состояния
         setTimeout(() => {
           navigate('/');
