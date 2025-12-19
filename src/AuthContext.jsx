@@ -66,6 +66,24 @@ export function AuthProvider({ children }) {
     loadUser,
   };
 
+  // Экспортируем функцию для получения ID пользователя в консоли (для отладки)
+  if (typeof window !== 'undefined') {
+    window.__getUserInfo = () => {
+      if (user?.profile) {
+        console.log('=== ВАШ ID ПОЛЬЗОВАТЕЛЯ ===');
+        console.log('User ID (sub):', user.profile.sub);
+        console.log('Email:', user.profile.email);
+        console.log('Username:', user.profile.preferred_username || user.profile.name);
+        console.log('\nСкопируйте этот ID и добавьте в .env на сервере:');
+        console.log(`ADMIN_USER_IDS=${user.profile.sub}`);
+        return user.profile.sub;
+      } else {
+        console.log('Пользователь не авторизован');
+        return null;
+      }
+    };
+  }
+
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 

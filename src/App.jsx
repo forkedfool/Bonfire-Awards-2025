@@ -39,14 +39,23 @@ export default function BonfireAwardsApp() {
   // Настройка API и загрузка данных при монтировании
   useEffect(() => {
     // Настраиваем получение токена для API из OIDC
+    // Используем прямую функцию получения токена вместо accessToken из контекста
+    // чтобы избежать проблем с обновлением токена
     setAuthTokenGetter(async () => {
-      return accessToken;
+      try {
+        const { getAccessToken } = await import('./auth.js');
+        const token = await getAccessToken();
+        return token;
+      } catch (error) {
+        return null;
+      }
     });
 
     if (!authLoading) {
       loadInitialData();
+      checkAdminStatus();
     }
-  }, [accessToken, authLoading]);
+  }, [authLoading, isAuthenticated]);
 
   // Обработка callback после авторизации
   useEffect(() => {

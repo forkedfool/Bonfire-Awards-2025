@@ -13,7 +13,18 @@ router.get('/categories', async (req, res) => {
       .order('name');
 
     if (categoriesError) {
-      console.error('Supabase categories error:', categoriesError);
+      console.error('[DATABASE ERROR] Categories fetch failed:', {
+        message: categoriesError.message,
+        code: categoriesError.code,
+        details: categoriesError.details,
+        hint: categoriesError.hint,
+      });
+      
+      // Более детальная обработка ошибок Supabase
+      if (categoriesError.message && categoriesError.message.includes('fetch failed')) {
+        throw new Error('Database connection failed. Please check Supabase configuration.');
+      }
+      
       throw new Error(`Database error: ${categoriesError.message || 'Unknown error'}`);
     }
 
@@ -68,8 +79,11 @@ router.get('/categories', async (req, res) => {
       categories: categoriesWithNominees 
     });
   } catch (error) {
-    console.error('Error fetching categories:', error);
-    console.error('Error stack:', error.stack);
+    console.error('[DATABASE ERROR] Failed to fetch categories:', {
+      message: error.message,
+      type: error.constructor.name,
+      isSupabaseError: error.message && error.message.includes('fetch failed'),
+    });
     res.status(500).json({ 
       success: false,
       error: error.message || 'Failed to fetch categories',

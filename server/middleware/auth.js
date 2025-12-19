@@ -56,7 +56,23 @@ export async function verifyBonfireToken(req, res, next) {
     // Проверяем базовый формат токена (JWT должен иметь 3 части, разделенные точками)
     const tokenParts = token.split('.');
     if (tokenParts.length !== 3) {
-      console.error('Invalid token format: expected JWT with 3 parts, got', tokenParts.length);
+      console.error('[AUTH ERROR] Invalid token format:', {
+        tokenLength: token.length,
+        partsCount: tokenParts.length,
+        tokenPreview: token.substring(0, 20) + '...',
+      });
+      return res.status(401).json({ 
+        success: false,
+        error: 'Invalid token format' 
+      });
+    }
+    
+    // Проверяем минимальную длину токена (JWT обычно длиннее 100 символов)
+    if (token.length < 50) {
+      console.error('[AUTH ERROR] Token too short:', {
+        tokenLength: token.length,
+        tokenPreview: token,
+      });
       return res.status(401).json({ 
         success: false,
         error: 'Invalid token format' 

@@ -192,20 +192,25 @@ export async function getAccessToken() {
     
     // Проверяем, не истек ли токен
     if (user.expired) {
-      console.log('Токен истек, пытаемся обновить...');
       try {
         await manager.signinSilent();
         const refreshedUser = await manager.getUser();
         return refreshedUser?.access_token || null;
       } catch (silentError) {
-        console.error('Ошибка обновления токена:', silentError);
         return null;
       }
     }
     
-    return user.access_token || null;
+    const token = user.access_token;
+    
+    // Проверяем, что токен валидный (JWT должен быть достаточно длинным)
+    if (token && token.length < 50) {
+      // Токен слишком короткий, возможно это не полный токен
+      return null;
+    }
+    
+    return token || null;
   } catch (error) {
-    console.error('Ошибка получения токена:', error);
     return null;
   }
 }
@@ -405,11 +410,16 @@ export async function handleCallback() {
           }
           
           const tokens = await tokenResponse.json();
-          console.log('Токены получены через бэкенд:', {
-            hasAccessToken: !!tokens.access_token,
-            hasIdToken: !!tokens.id_token,
-            hasRefreshToken: !!tokens.refresh_token,
-          });
+          
+          // Проверяем, что токены валидные
+          if (!tokens.access_token) {
+            throw new Error('Не получен access_token от сервера');
+          }
+          
+          if (tokens.access_token.length < 50) {
+            console.error('[AUTH ERROR] Access token too short from server:', tokens.access_token.length);
+            throw new Error('Получен невалидный токен от сервера');
+          }
           
           // Получаем userinfo через бэкенд (для обхода CORS) или декодируем из id_token
           let userInfo = {};
@@ -470,10 +480,13 @@ export async function handleCallback() {
           
           // Сохраняем пользователя в хранилище
           await manager.storeUser(user);
-          console.log('Пользователь сохранен после ручного обмена токенов:', {
-            email: userInfo.email || userInfo.sub,
-            hasToken: !!user.access_token,
-          });
+          
+          // Проверяем, что токен сохранен правильно
+          const savedUser = await manager.getUser();
+          if (savedUser && savedUser.access_token && savedUser.access_token.length < 50) {
+            // Токен слишком короткий, возможно проблема с сохранением
+            console.error('[AUTH ERROR] Token too short after save:', savedUser.access_token.length);
+          }
         } catch (manualError) {
           console.error('Ошибка при ручном обмене токенов:', manualError);
           // Пробрасываем более информативную ошибку

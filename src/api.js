@@ -19,7 +19,13 @@ import { getAccessToken } from './auth.js';
 
 let getAuthToken = async () => {
   try {
-    return await getAccessToken();
+    const token = await getAccessToken();
+    // Проверяем, что токен валидный (JWT должен быть достаточно длинным)
+    if (token && token.length < 50) {
+      // Токен слишком короткий, возможно это не полный токен
+      return null;
+    }
+    return token;
   } catch (error) {
     return null;
   }
@@ -41,13 +47,7 @@ async function apiRequest(endpoint, options = {}) {
   };
 
   try {
-    console.log('API Request:', url, config.method || 'GET', {
-      hasToken: !!token,
-      tokenLength: token ? token.length : 0,
-    });
     const response = await fetchWithTimeout(url, config, API_TIMEOUT);
-    
-    console.log('API Response status:', response.status, response.statusText);
     
     // Читаем ответ как текст сначала, чтобы можно было парсить JSON или обработать ошибку
     const responseText = await response.text();

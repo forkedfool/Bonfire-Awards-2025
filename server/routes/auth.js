@@ -121,6 +121,27 @@ router.post('/exchange-token', async (req, res) => {
       });
     }
 
+    // Проверяем, что токены валидные
+    if (!tokens.access_token) {
+      console.error('[TOKEN EXCHANGE ERROR] No access_token in response');
+      return res.status(500).json({ 
+        success: false,
+        error: 'No access_token in response from Bonfire' 
+      });
+    }
+    
+    // Проверяем длину токена (JWT должен быть достаточно длинным)
+    if (tokens.access_token.length < 50) {
+      console.error('[TOKEN EXCHANGE ERROR] Access token too short:', {
+        length: tokens.access_token.length,
+        preview: tokens.access_token.substring(0, 30),
+      });
+      return res.status(500).json({ 
+        success: false,
+        error: 'Invalid access_token format from Bonfire' 
+      });
+    }
+    
     // Возвращаем токены в формате, ожидаемом oidc-client
     res.json({
       access_token: tokens.access_token,
