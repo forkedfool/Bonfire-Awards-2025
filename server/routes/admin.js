@@ -228,7 +228,28 @@ router.get('/nominees', async (req, res) => {
       .order('name');
 
     if (error) throw error;
-    res.json(data);
+    
+    // Преобразуем данные для фронтенда
+    const transformed = (data || []).map(nom => {
+      const nominee = { ...nom };
+      if (nominee.image_url !== undefined) {
+        nominee.imageUrl = nominee.image_url;
+        delete nominee.image_url;
+      }
+      // Парсим description как JSON, если это возможно
+      if (nominee.description) {
+        try {
+          const parsed = JSON.parse(nominee.description);
+          if (parsed.desc) nominee.desc = parsed.desc;
+          if (parsed.role) nominee.role = parsed.role;
+        } catch (e) {
+          nominee.desc = nominee.description;
+        }
+      }
+      return nominee;
+    });
+    
+    res.json(transformed);
   } catch (error) {
     console.error('Error fetching nominees:', error);
     res.status(500).json({ error: error.message });
@@ -251,7 +272,26 @@ router.post('/nominees', async (req, res) => {
       .single();
 
     if (error) throw error;
-    res.json(data);
+    
+    // Преобразуем ответ для фронтенда
+    const response = {
+      ...data,
+      imageUrl: data.image_url,
+    };
+    delete response.image_url;
+    
+    // Парсим description для извлечения desc и role
+    if (data.description) {
+      try {
+        const parsed = JSON.parse(data.description);
+        response.desc = parsed.desc || '';
+        response.role = parsed.role || '';
+      } catch (e) {
+        response.desc = data.description;
+      }
+    }
+    
+    res.json(response);
   } catch (error) {
     console.error('Error creating nominee:', error);
     res.status(500).json({ error: error.message });
@@ -276,7 +316,25 @@ router.put('/nominees/:id', async (req, res) => {
       return res.status(404).json({ error: 'Nominee not found' });
     }
 
-    res.json(data);
+    // Преобразуем ответ для фронтенда
+    const response = {
+      ...data,
+      imageUrl: data.image_url,
+    };
+    delete response.image_url;
+    
+    // Парсим description для извлечения desc и role
+    if (data.description) {
+      try {
+        const parsed = JSON.parse(data.description);
+        response.desc = parsed.desc || '';
+        response.role = parsed.role || '';
+      } catch (e) {
+        response.desc = data.description;
+      }
+    }
+
+    res.json(response);
   } catch (error) {
     console.error('Error updating nominee:', error);
     res.status(500).json({ error: error.message });

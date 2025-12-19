@@ -4,7 +4,7 @@ import {
   Flame, Scroll, Shield, Sword, Crown, Feather, 
   Edit, Trash2, Plus, BarChart, Save, LogOut, ChevronRight, ChevronLeft, X, Check 
 } from 'lucide-react';
-import { categoriesAPI, votesAPI, adminAPI, setAuthTokenGetter } from './api.js';
+import { categoriesAPI, votesAPI, adminAPI, nomineesAPI, setAuthTokenGetter } from './api.js';
 import { useAuth } from './AuthContext.jsx';
 import { signIn, signOut } from './auth.js';
 import Privacy from './Privacy.jsx';
@@ -38,6 +38,12 @@ export default function BonfireAwardsApp() {
 
   // Vote Stats для админ-панели
   const [voteStats, setVoteStats] = useState({});
+  
+  // Nominees Management State
+  const [allNominees, setAllNominees] = useState([]);
+  const [nomineeSearchQuery, setNomineeSearchQuery] = useState('');
+  const [isAddingNomineeToCategory, setIsAddingNomineeToCategory] = useState(false);
+  const [adminView, setAdminView] = useState('categories'); // 'categories' or 'nominees'
 
   // Настройка API и загрузка данных при монтировании
   useEffect(() => {
@@ -84,6 +90,15 @@ export default function BonfireAwardsApp() {
       } catch (error) {
         // Используем пустой массив, если не удалось загрузить
         setCategories([]);
+      }
+      
+      // Загружаем номинантов, если пользователь админ
+      if (isAdmin) {
+        try {
+          await loadAllNominees();
+        } catch (error) {
+          // Игнорируем ошибки загрузки номинантов
+        }
       }
       
       // Загружаем голоса пользователя, если он авторизован
@@ -229,6 +244,7 @@ export default function BonfireAwardsApp() {
       if (result.isAdmin && view !== 'admin-dashboard') {
         try {
           await loadVoteStats();
+          await loadAllNominees();
         } catch (statsError) {
           // Игнорируем ошибки загрузки статистики
         }
@@ -267,8 +283,55 @@ export default function BonfireAwardsApp() {
       console.log(`[ADMIN ACTION] User ID: ${userId || 'unknown'}, Action: create nominee, Category: ${catId}, Name: ${newNominee.name}`);
       setNewNominee({ name: '', desc: '', role: '', imageUrl: '' });
       await loadCategories();
+      await loadAllNominees();
     } catch (error) {
       alert('Ошибка добавления номинанта: ' + error.message);
+    }
+  };
+
+  const handleCreateNominee = async () => {
+    if (!newNominee.name) return;
+    try {
+      const userId = user?.profile?.sub;
+      await nomineesAPI.create(
+        newNominee.name,
+        newNominee.desc,
+        newNominee.role,
+        newNominee.imageUrl || null
+      );
+      console.log(`[ADMIN ACTION] User ID: ${userId || 'unknown'}, Action: create nominee, Name: ${newNominee.name}`);
+      setNewNominee({ name: '', desc: '', role: '', imageUrl: '' });
+      await loadAllNominees();
+    } catch (error) {
+      alert('Ошибка создания номинанта: ' + error.message);
+    }
+  };
+
+  const handleDeleteNomineeStandalone = async (nomId) => {
+    if (!confirm('Вы уверены, что хотите удалить этого номинанта? Он будет удален из всех категорий.')) {
+      return;
+    }
+    try {
+      const userId = user?.profile?.sub;
+      await nomineesAPI.delete(nomId);
+      console.log(`[ADMIN ACTION] User ID: ${userId || 'unknown'}, Action: delete nominee, ID: ${nomId}`);
+      await loadAllNominees();
+      await loadCategories();
+    } catch (error) {
+      alert('Ошибка удаления номинанта: ' + error.message);
+    }
+  };
+
+  const handleLinkNomineeToCategory = async (catId, nomId) => {
+    try {
+      const userId = user?.profile?.sub;
+      await nomineesAPI.linkToCategory(catId, nomId);
+      console.log(`[ADMIN ACTION] User ID: ${userId || 'unknown'}, Action: link nominee to category, Category: ${catId}, Nominee: ${nomId}`);
+      await loadCategories();
+      setIsAddingNomineeToCategory(false);
+      setNomineeSearchQuery('');
+    } catch (error) {
+      alert('Ошибка добавления номинанта в категорию: ' + error.message);
     }
   };
 
@@ -562,7 +625,7 @@ export default function BonfireAwardsApp() {
               </div>
             </div>
           ) : (
-          <main className="flex-grow flex flex-col items-center justify-center px-4 md:px-12 py-8 relative w-full h-full">
+          <main className="flex-grow flex flex-col items-center justify-center px-4 md:px-12 py-8 pb-24 md:pb-8 relative w-full h-full">
             
             {/* Desktop Arrows */}
             <button 
@@ -682,7 +745,7 @@ export default function BonfireAwardsApp() {
             )}
 
             {/* Mobile Footer Nav */}
-            <div className="md:hidden fixed bottom-0 left-0 right-0 p-4 bg-[#110F0E] border-t border-[#333] flex justify-between z-40">
+            <div className="md:hidden fixed bottom-0 left-0 right-0 p-4 bg-[#110F0E] border-t border-[#333] flex justify-between z-40 mb-0">
                <button onClick={handlePrevStep} className="text-[#E8E6D1] font-heading text-sm uppercase flex items-center gap-2">
                  <ChevronLeft size={16} /> {currentStep === 0 ? 'Home' : 'Prev'}
                </button>
@@ -735,14 +798,43 @@ export default function BonfireAwardsApp() {
                   <h2 className="text-2xl font-heading font-bold uppercase text-[#E8E6D1] mb-2">The Archives</h2>
                   <p className="text-[#555] font-heading text-xs tracking-widest">MANAGE THE REALM</p>
                </div>
-               <button onClick={() => {
-                 setView('landing');
-                 setCurrentStep(0);
-               }} className="flex items-center gap-2 text-red-900 hover:text-red-500 font-heading text-xs border border-red-900/30 px-4 py-2">
-                 <LogOut size={12} /> LEAVE
-               </button>
+               <div className="flex items-center gap-4">
+                 <div className="flex gap-2 border border-[#3A3532] p-1">
+                   <button 
+                     onClick={() => setAdminView('categories')}
+                     className={`px-4 py-2 text-xs font-heading uppercase transition-colors ${
+                       adminView === 'categories' 
+                         ? 'bg-[#FF5500] text-[#110F0E]' 
+                         : 'text-[#888] hover:text-[#E8E6D1]'
+                     }`}
+                   >
+                     Categories
+                   </button>
+                   <button 
+                     onClick={() => {
+                       setAdminView('nominees');
+                       loadAllNominees();
+                     }}
+                     className={`px-4 py-2 text-xs font-heading uppercase transition-colors ${
+                       adminView === 'nominees' 
+                         ? 'bg-[#FF5500] text-[#110F0E]' 
+                         : 'text-[#888] hover:text-[#E8E6D1]'
+                     }`}
+                   >
+                     Nominees
+                   </button>
+                 </div>
+                 <button onClick={() => {
+                   setView('landing');
+                   setCurrentStep(0);
+                 }} className="flex items-center gap-2 text-red-900 hover:text-red-500 font-heading text-xs border border-red-900/30 px-4 py-2">
+                   <LogOut size={12} /> LEAVE
+                 </button>
+               </div>
             </div>
 
+            {/* === CATEGORIES VIEW === */}
+            {adminView === 'categories' && (
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
               <div className="lg:col-span-1 space-y-2">
                  <h3 className="text-[#FF5500] font-heading text-xs uppercase tracking-widest mb-6">Chapters</h3>
@@ -913,16 +1005,62 @@ export default function BonfireAwardsApp() {
                             </div>
 
                             <div className="border border-[#3A3532] p-6 bg-[#110F0E]">
-                               <h4 className="text-xs font-heading text-[#888] uppercase mb-6 tracking-widest">Scribe New Entry</h4>
-                               <div className="grid grid-cols-2 gap-6 mb-6">
-                                  <input placeholder="Name" className="bg-transparent border-b border-[#3A3532] py-2 text-sm text-[#E8E6D1] focus:border-[#FF5500] outline-none font-heading" value={newNominee.name} onChange={(e) => setNewNominee({...newNominee, name: e.target.value})} />
-                                  <input placeholder="Title/Role" className="bg-transparent border-b border-[#3A3532] py-2 text-sm text-[#E8E6D1] focus:border-[#FF5500] outline-none font-heading" value={newNominee.role} onChange={(e) => setNewNominee({...newNominee, role: e.target.value})} />
+                               <h4 className="text-xs font-heading text-[#888] uppercase mb-6 tracking-widest">Add Nominee to Category</h4>
+                               
+                               {/* Search existing nominees */}
+                               <div className="mb-6">
+                                 <input 
+                                   placeholder="Search nominees by name..." 
+                                   className="w-full bg-transparent border-b border-[#3A3532] py-2 text-sm text-[#E8E6D1] focus:border-[#FF5500] outline-none font-body mb-4" 
+                                   value={nomineeSearchQuery} 
+                                   onChange={(e) => setNomineeSearchQuery(e.target.value)} 
+                                 />
+                                 
+                                 {nomineeSearchQuery && (
+                                   <div className="max-h-48 overflow-y-auto space-y-2 border border-[#3A3532] p-2">
+                                     {allNominees
+                                       .filter(nom => 
+                                         nom.name.toLowerCase().includes(nomineeSearchQuery.toLowerCase()) &&
+                                         !cat.nominees.some(cn => cn.id === nom.id)
+                                       )
+                                       .map(nom => (
+                                         <div 
+                                           key={nom.id}
+                                           onClick={() => handleLinkNomineeToCategory(cat.id, nom.id)}
+                                           className="p-2 border border-[#3A3532] hover:border-[#FF5500] cursor-pointer transition-colors flex justify-between items-center"
+                                         >
+                                           <div>
+                                             <span className="font-heading text-sm text-[#E8E6D1]">{nom.name}</span>
+                                             {nom.role && (
+                                               <span className="text-[9px] font-heading bg-[#222] px-2 py-0.5 text-[#888] tracking-wider ml-2">{nom.role}</span>
+                                             )}
+                                           </div>
+                                           <Plus size={14} className="text-[#555] hover:text-[#FF5500]" />
+                                         </div>
+                                       ))}
+                                     {allNominees.filter(nom => 
+                                       nom.name.toLowerCase().includes(nomineeSearchQuery.toLowerCase()) &&
+                                       !cat.nominees.some(cn => cn.id === nom.id)
+                                     ).length === 0 && (
+                                       <p className="text-[#555] text-xs font-body italic p-2">No nominees found</p>
+                                     )}
+                                   </div>
+                                 )}
                                </div>
-                               <input placeholder="Image URL (optional)" className="w-full bg-transparent border-b border-[#3A3532] py-2 text-sm text-[#E8E6D1] focus:border-[#FF5500] outline-none mb-6 font-body" value={newNominee.imageUrl} onChange={(e) => setNewNominee({...newNominee, imageUrl: e.target.value})} />
-                               <input placeholder="Legend (Description)" className="w-full bg-transparent border-b border-[#3A3532] py-2 text-sm text-[#E8E6D1] focus:border-[#FF5500] outline-none mb-6 font-body" value={newNominee.desc} onChange={(e) => setNewNominee({...newNominee, desc: e.target.value})} />
-                               <button onClick={() => handleAddNominee(cat.id)} className="w-full bg-[#333] hover:bg-[#FF5500] hover:text-[#110F0E] text-[#E8E6D1] font-heading text-xs uppercase py-3 transition-colors flex items-center justify-center gap-2 tracking-widest">
-                                 <Plus size={14} /> Inscribe
-                               </button>
+
+                               {/* Or create new */}
+                               <div className="border-t border-[#3A3532] pt-6">
+                                 <h5 className="text-xs font-heading text-[#888] uppercase mb-4 tracking-widest">Or Create New Nominee</h5>
+                                 <div className="grid grid-cols-2 gap-6 mb-6">
+                                    <input placeholder="Name" className="bg-transparent border-b border-[#3A3532] py-2 text-sm text-[#E8E6D1] focus:border-[#FF5500] outline-none font-heading" value={newNominee.name} onChange={(e) => setNewNominee({...newNominee, name: e.target.value})} />
+                                    <input placeholder="Title/Role" className="bg-transparent border-b border-[#3A3532] py-2 text-sm text-[#E8E6D1] focus:border-[#FF5500] outline-none font-heading" value={newNominee.role} onChange={(e) => setNewNominee({...newNominee, role: e.target.value})} />
+                                 </div>
+                                 <input placeholder="Image URL (optional)" className="w-full bg-transparent border-b border-[#3A3532] py-2 text-sm text-[#E8E6D1] focus:border-[#FF5500] outline-none mb-6 font-body" value={newNominee.imageUrl} onChange={(e) => setNewNominee({...newNominee, imageUrl: e.target.value})} />
+                                 <input placeholder="Legend (Description)" className="w-full bg-transparent border-b border-[#3A3532] py-2 text-sm text-[#E8E6D1] focus:border-[#FF5500] outline-none mb-6 font-body" value={newNominee.desc} onChange={(e) => setNewNominee({...newNominee, desc: e.target.value})} />
+                                 <button onClick={() => handleAddNominee(cat.id)} className="w-full bg-[#333] hover:bg-[#FF5500] hover:text-[#110F0E] text-[#E8E6D1] font-heading text-xs uppercase py-3 transition-colors flex items-center justify-center gap-2 tracking-widest">
+                                   <Plus size={14} /> Create & Add
+                                 </button>
+                               </div>
                             </div>
                           </>
                         );
@@ -936,12 +1074,84 @@ export default function BonfireAwardsApp() {
                  )}
               </div>
             </div>
+            )}
+
+            {/* === NOMINEES VIEW === */}
+            {adminView === 'nominees' && (
+            <div className="space-y-8">
+              <div className="bg-[#161413] border border-[#3A3532] p-8">
+                <h3 className="text-xl font-heading text-[#E8E6D1] mb-6">Create New Nominee</h3>
+                <div className="grid grid-cols-2 gap-6 mb-6">
+                  <input 
+                    placeholder="Name" 
+                    className="bg-transparent border-b border-[#3A3532] py-2 text-sm text-[#E8E6D1] focus:border-[#FF5500] outline-none font-heading" 
+                    value={newNominee.name} 
+                    onChange={(e) => setNewNominee({...newNominee, name: e.target.value})} 
+                  />
+                  <input 
+                    placeholder="Title/Role" 
+                    className="bg-transparent border-b border-[#3A3532] py-2 text-sm text-[#E8E6D1] focus:border-[#FF5500] outline-none font-heading" 
+                    value={newNominee.role} 
+                    onChange={(e) => setNewNominee({...newNominee, role: e.target.value})} 
+                  />
+                </div>
+                <input 
+                  placeholder="Image URL (optional)" 
+                  className="w-full bg-transparent border-b border-[#3A3532] py-2 text-sm text-[#E8E6D1] focus:border-[#FF5500] outline-none mb-6 font-body" 
+                  value={newNominee.imageUrl} 
+                  onChange={(e) => setNewNominee({...newNominee, imageUrl: e.target.value})} 
+                />
+                <input 
+                  placeholder="Legend (Description)" 
+                  className="w-full bg-transparent border-b border-[#3A3532] py-2 text-sm text-[#E8E6D1] focus:border-[#FF5500] outline-none mb-6 font-body" 
+                  value={newNominee.desc} 
+                  onChange={(e) => setNewNominee({...newNominee, desc: e.target.value})} 
+                />
+                <button 
+                  onClick={handleCreateNominee} 
+                  className="w-full bg-[#333] hover:bg-[#FF5500] hover:text-[#110F0E] text-[#E8E6D1] font-heading text-xs uppercase py-3 transition-colors flex items-center justify-center gap-2 tracking-widest"
+                >
+                  <Plus size={14} /> Create Nominee
+                </button>
+              </div>
+
+              <div className="bg-[#161413] border border-[#3A3532] p-8">
+                <h3 className="text-xl font-heading text-[#E8E6D1] mb-6">All Nominees</h3>
+                <div className="space-y-4">
+                  {allNominees.length === 0 ? (
+                    <p className="text-[#555] text-sm font-body italic">No nominees yet. Create one above.</p>
+                  ) : (
+                    allNominees.map(nom => (
+                      <div key={nom.id} className="border border-[#3A3532] p-4 flex justify-between items-center group hover:border-[#555] transition-colors">
+                        <div className="flex-grow">
+                          <div className="flex items-center gap-3 mb-2">
+                            <span className="font-heading font-bold text-[#E8E6D1]">{nom.name}</span>
+                            {nom.role && (
+                              <span className="text-[9px] font-heading bg-[#222] px-2 py-0.5 text-[#888] tracking-wider">{nom.role}</span>
+                            )}
+                          </div>
+                          {nom.desc && (
+                            <p className="text-[#666] text-xs font-body italic">{nom.desc}</p>
+                          )}
+                        </div>
+                        <button 
+                          onClick={() => handleDeleteNomineeStandalone(nom.id)} 
+                          className="text-[#555] hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </div>
+            )}
           </main>
         )}
       </div>
 
       {/* FOOTER */}
-      {view !== 'voting' && (
       <footer className="relative z-20 bg-[#0E0D0C] border-t border-[#3A3532] pb-12">
          {/* Marquee */}
          <div className="overflow-hidden border-b border-[#3A3532] py-3 bg-[#161413]">
@@ -985,7 +1195,6 @@ export default function BonfireAwardsApp() {
             </div>
          </div>
       </footer>
-      )}
         </div>
       } />
     </Routes>

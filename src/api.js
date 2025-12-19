@@ -189,6 +189,43 @@ export const votesAPI = {
   getAllStats: () => apiRequest('/votes/stats'),
 };
 
+// Номинанты (отдельно от категорий)
+export const nomineesAPI = {
+  getAll: () => apiRequest('/admin/nominees'),
+  getById: (id) => apiRequest(`/admin/nominees/${id}`),
+  create: (name, desc, role, imageUrl) => apiRequest('/admin/nominees', {
+    method: 'POST',
+    body: JSON.stringify({ 
+      name, 
+      description: desc || role ? JSON.stringify({ desc: desc || '', role: role || '' }) : null,
+      image_url: imageUrl || null 
+    }),
+  }),
+  update: (id, name, desc, role, imageUrl) => apiRequest(`/admin/nominees/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify({ 
+      name, 
+      description: desc || role ? JSON.stringify({ desc: desc || '', role: role || '' }) : null,
+      image_url: imageUrl || null 
+    }),
+  }),
+  delete: (id) => apiRequest(`/admin/nominees/${id}`, {
+    method: 'DELETE',
+  }),
+  // Связать номинанта с категорией
+  linkToCategory: (categoryId, nomineeId) => apiRequest('/admin/category-nominees', {
+    method: 'POST',
+    body: JSON.stringify({ category_id: categoryId, nominee_id: nomineeId }),
+  }),
+  // Отвязать номинанта от категории
+  unlinkFromCategory: (categoryId, nomineeId) => {
+    // Сначала найдем ID связи
+    return apiRequest(`/admin/categories/${categoryId}/nominees/${nomineeId}`, {
+      method: 'DELETE',
+    });
+  },
+};
+
 // Админка
 export const adminAPI = {
   verifyPassword: (password) => apiRequest('/admin/verify', {
