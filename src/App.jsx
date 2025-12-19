@@ -223,6 +223,35 @@ export default function BonfireAwardsApp() {
     }
   }
 
+  async function loadAllNominees() {
+    try {
+      const data = await nomineesAPI.getAll();
+      // Преобразуем данные номинантов для фронтенда
+      const transformed = (data || []).map(nom => {
+        const nominee = { ...nom };
+        if (nominee.image_url !== undefined) {
+          nominee.imageUrl = nominee.image_url;
+          delete nominee.image_url;
+        }
+        // Парсим description как JSON, если это возможно
+        if (nominee.description) {
+          try {
+            const parsed = JSON.parse(nominee.description);
+            if (parsed.desc) nominee.desc = parsed.desc;
+            if (parsed.role) nominee.role = parsed.role;
+          } catch (e) {
+            nominee.desc = nominee.description;
+          }
+        }
+        return nominee;
+      });
+      setAllNominees(transformed);
+    } catch (error) {
+      console.error('Error loading nominees:', error);
+      setAllNominees([]);
+    }
+  }
+
   // Navigation Handlers
   const handleLogin = async () => {
     try {
