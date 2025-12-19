@@ -7,21 +7,42 @@ const router = express.Router();
 
 // Endpoint для проверки пароля (без middleware, проверяем вручную)
 router.post('/verify', async (req, res) => {
-  const password = req.body.password;
-  
-  if (!password) {
-    return res.status(401).json({ error: 'Password required' });
+  try {
+    const password = req.body.password;
+    
+    if (!password) {
+      return res.status(401).json({ 
+        success: false,
+        error: 'Password required' 
+      });
+    }
+    
+    if (!config.admin.masterPassword) {
+      console.error('ADMIN_MASTER_PASSWORD not configured');
+      return res.status(500).json({ 
+        success: false,
+        error: 'Admin authentication not configured' 
+      });
+    }
+    
+    if (password !== config.admin.masterPassword) {
+      return res.status(403).json({ 
+        success: false,
+        error: 'Invalid admin password' 
+      });
+    }
+    
+    return res.status(200).json({ 
+      success: true,
+      message: 'Password verified' 
+    });
+  } catch (error) {
+    console.error('Error in admin verify:', error);
+    res.status(500).json({ 
+      success: false,
+      error: error.message || 'Internal server error' 
+    });
   }
-  
-  if (!config.admin.masterPassword) {
-    return res.status(500).json({ error: 'Admin authentication not configured' });
-  }
-  
-  if (password !== config.admin.masterPassword) {
-    return res.status(403).json({ error: 'Invalid admin password' });
-  }
-  
-  return res.status(200).json({ success: true });
 });
 
 // Все остальные админ-роуты требуют мастер-пароль

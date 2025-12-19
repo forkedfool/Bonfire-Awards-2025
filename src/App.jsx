@@ -183,19 +183,37 @@ export default function BonfireAwardsApp() {
     
     try {
       // Проверяем пароль через бекенд
-      await adminAPI.verifyPassword(adminPass);
+      const result = await adminAPI.verifyPassword(adminPass);
+      
+      // Проверяем результат
+      if (result && result.success === false) {
+        throw new Error(result.error || 'Неверный пароль');
+      }
+      
       // Если пароль верный, загружаем статистику и открываем админ-панель
-      await loadVoteStats();
+      try {
+        await loadVoteStats();
+      } catch (statsError) {
+        console.warn('Не удалось загрузить статистику:', statsError);
+        // Продолжаем даже если статистика не загрузилась
+      }
+      
       setView('admin-dashboard');
       setAdminPass(''); // Очищаем пароль после успешного входа
     } catch (error) {
-      if (error.message.includes('403') || error.message.includes('Invalid')) {
-        alert('Неверный пароль');
-        setAdminPass('');
+      console.error('Admin login error:', error);
+      
+      let errorMessage = 'Ошибка доступа';
+      if (error.message.includes('403') || error.message.includes('Invalid') || error.message.includes('Неверный')) {
+        errorMessage = 'Неверный пароль';
+      } else if (error.message.includes('fetch failed') || error.message.includes('Failed to fetch')) {
+        errorMessage = 'Сервер недоступен. Убедитесь, что сервер запущен.';
       } else {
-        alert('Ошибка доступа: ' + error.message);
-        setAdminPass('');
+        errorMessage = error.message || 'Ошибка доступа';
       }
+      
+      alert(errorMessage);
+      setAdminPass('');
     }
   };
 

@@ -103,11 +103,20 @@ async function apiRequest(endpoint, options = {}) {
     return data;
   } catch (error) {
     // Обработка сетевых ошибок
-    if (error.message.includes('Таймаут запроса')) {
+    if (error.message && error.message.includes('Таймаут запроса')) {
       throw new Error('Превышено время ожидания ответа сервера');
     }
-    if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
-      throw new Error('Бекенд недоступен. Убедитесь, что сервер запущен на порту 3000');
+    
+    // Проверяем различные варианты сетевых ошибок
+    const errorMessage = error.message || error.toString() || '';
+    if (
+      errorMessage.includes('Failed to fetch') || 
+      errorMessage.includes('NetworkError') ||
+      errorMessage.includes('fetch failed') ||
+      error.name === 'TypeError' && errorMessage.includes('fetch')
+    ) {
+      const apiUrl = API_BASE_URL || 'http://localhost:3000/api';
+      throw new Error(`Сервер недоступен. Убедитесь, что сервер запущен и доступен по адресу ${apiUrl}`);
     }
     
     // Если это уже наша ошибка с сообщением - пробрасываем как есть
