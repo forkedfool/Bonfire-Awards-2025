@@ -853,7 +853,7 @@ export default function BonfireAwardsApp() {
               </div>
             </div>
           ) : (
-          <main className="flex-grow flex flex-col items-center justify-center px-4 md:px-12 py-8 pb-32 md:pb-8 relative w-full h-full">
+          <main className="flex-grow flex flex-col items-center justify-center px-4 md:px-12 py-8 pb-8 relative w-full h-full">
             
             {/* Desktop Arrows */}
             <button 
@@ -1025,33 +1025,33 @@ export default function BonfireAwardsApp() {
                        <span className="text-[10px] font-body text-[#555]">Вынести приговор позже</span>
                     </div>
                   </div>
+
+                  {/* Mobile Navigation Buttons */}
+                  <div className="md:hidden mt-8 flex justify-between items-center gap-4">
+                    <button 
+                      onClick={handlePrevStep} 
+                      className="px-4 py-3 bg-[#1A1817] border border-[#333] text-[#E8E6D1] font-heading text-xs uppercase flex items-center gap-2 hover:border-[#FF5500] hover:text-[#FF5500] transition-all active:scale-95"
+                    >
+                      <ChevronLeft size={18} /> {currentStep === 0 ? 'Главная' : 'Назад'}
+                    </button>
+                    {currentStep < categories.length - 1 ? (
+                      <button 
+                        onClick={handleNextStep} 
+                        className="px-4 py-3 bg-[#FF5500] text-[#110F0E] font-heading text-xs uppercase flex items-center gap-2 hover:bg-[#FF4400] transition-all active:scale-95 font-bold flex-1"
+                      >
+                        Далее <ChevronRight size={18} />
+                      </button>
+                    ) : (
+                      <button 
+                        onClick={handleSubmit} 
+                        className="px-4 py-3 bg-[#FF5500] text-[#110F0E] font-heading text-xs uppercase flex items-center gap-2 hover:bg-[#FF4400] transition-all active:scale-95 font-bold flex-1"
+                      >
+                        <Feather size={18} /> Завершить
+                      </button>
+                    )}
+                  </div>
               </div>
             )}
-
-            {/* Mobile Footer Nav */}
-            <div className="md:hidden fixed bottom-0 left-0 right-0 p-4 bg-[#110F0E]/95 backdrop-blur-sm border-t border-[#333] flex justify-between items-center z-50 shadow-[0_-4px_20px_rgba(0,0,0,0.5)]">
-               <button 
-                 onClick={handlePrevStep} 
-                 className="px-4 py-3 bg-[#1A1817] border border-[#333] text-[#E8E6D1] font-heading text-xs uppercase flex items-center gap-2 hover:border-[#FF5500] hover:text-[#FF5500] transition-all active:scale-95"
-               >
-                 <ChevronLeft size={18} /> {currentStep === 0 ? 'Главная' : 'Назад'}
-               </button>
-               {currentStep < categories.length - 1 ? (
-                 <button 
-                   onClick={handleNextStep} 
-                   className="px-4 py-3 bg-[#FF5500] text-[#110F0E] font-heading text-xs uppercase flex items-center gap-2 hover:bg-[#FF4400] transition-all active:scale-95 font-bold"
-                 >
-                   Далее <ChevronRight size={18} />
-                 </button>
-               ) : (
-                 <button 
-                   onClick={handleSubmit} 
-                   className="px-4 py-3 bg-[#FF5500] text-[#110F0E] font-heading text-xs uppercase flex items-center gap-2 hover:bg-[#FF4400] transition-all active:scale-95 font-bold"
-                 >
-                   <Feather size={18} /> Завершить
-                 </button>
-               )}
-            </div>
 
           </main>
           )
