@@ -89,8 +89,8 @@ export default function BonfireAwardsApp() {
     if (isAuthenticated && user && view === 'landing' && categories.length > 0) {
       const returnedFromVoting = sessionStorage.getItem('returnedFromVoting');
       if (!returnedFromVoting) {
-        // После успешной авторизации автоматически переходим на голосование
-        setView('voting');
+      // После успешной авторизации автоматически переходим на голосование
+      setView('voting');
         setCurrentStep(0);
       } else {
         // Убираем флаг, чтобы при следующей авторизации снова работал авто-переход
@@ -129,6 +129,23 @@ export default function BonfireAwardsApp() {
     
     return () => clearInterval(interval);
   }, [view]);
+
+  // Загружаем статистику голосов при открытии админ-панели и периодически обновляем
+  useEffect(() => {
+    if (view === 'admin-dashboard' && isAdmin) {
+      loadVoteStats().catch(error => {
+        console.error('[VOTE STATS] Error loading on mount:', error);
+      });
+
+      const interval = setInterval(() => {
+        loadVoteStats().catch(error => {
+          console.error('[VOTE STATS] Error loading on interval:', error);
+        });
+      }, 10000); // Обновляем каждые 10 секунд
+
+      return () => clearInterval(interval);
+    }
+  }, [view, isAdmin]);
 
   async function loadInitialData() {
     try {
@@ -207,20 +224,42 @@ export default function BonfireAwardsApp() {
       const data = await votesAPI.getAllStats();
       const statsMap = {};
       
+      console.log('[VOTE STATS] Raw data:', data);
+      
       // Обрабатываем новый формат ответа { success: true, stats: [...] }
       const stats = data.stats || (Array.isArray(data) ? data : []);
       
       if (Array.isArray(stats)) {
-        stats.forEach(stat => {
-          if (!statsMap[stat.category_id]) {
-            statsMap[stat.category_id] = {};
+        stats.forEach(categoryStat => {
+          const categoryId = categoryStat.category_id;
+          if (!categoryId) return;
+          
+          if (!statsMap[categoryId]) {
+            statsMap[categoryId] = {};
           }
-          statsMap[stat.category_id][stat.nominee_id] = stat.vote_count;
+          
+          // Обрабатываем вложенную структуру с nominees
+          if (categoryStat.nominees && Array.isArray(categoryStat.nominees)) {
+            categoryStat.nominees.forEach(nomineeStat => {
+              const nomineeId = nomineeStat.nominee_id;
+              const voteCount = nomineeStat.vote_count || 0;
+              if (nomineeId) {
+                statsMap[categoryId][nomineeId] = voteCount;
+              }
+            });
+          } else if (categoryStat.nominee_id) {
+            // Старый формат: плоская структура
+            const nomineeId = categoryStat.nominee_id;
+            const voteCount = categoryStat.vote_count || 0;
+            statsMap[categoryId][nomineeId] = voteCount;
+          }
         });
       }
       
+      console.log('[VOTE STATS] Processed statsMap:', statsMap);
       setVoteStats(statsMap);
     } catch (error) {
+      console.error('[VOTE STATS] Error loading stats:', error);
       throw error; // ВАЖНО: пробрасываем ошибку дальше для проверки прав доступа
     }
   }
@@ -848,10 +887,10 @@ export default function BonfireAwardsApp() {
             </div>
           ) : categories.length === 0 ? (
             <div className="flex flex-col items-center justify-center flex-grow text-center px-4">
-              <div className="text-center py-20 text-[#8A8580]">
-                <p>Категории пока не добавлены</p>
-              </div>
-            </div>
+                <div className="text-center py-20 text-[#8A8580]">
+                  <p>Категории пока не добавлены</p>
+                </div>
+                  </div>
           ) : (
           <main className="flex-grow flex flex-col items-center justify-center px-4 md:px-12 py-8 pb-8 relative w-full h-full">
             
@@ -930,8 +969,8 @@ export default function BonfireAwardsApp() {
                            // Если это не JSON, показываем как обычный текст
                            return (
                              <p className="text-[#8A8580] text-sm font-body font-light italic mt-4 max-w-2xl mx-auto">
-                               {cat.description}
-                             </p>
+                         {cat.description}
+                       </p>
                            );
                          }
                        }
@@ -952,7 +991,7 @@ export default function BonfireAwardsApp() {
                           `}
                         >
                           {/* Avatar */}
-                          <div className={`
+                           <div className={`
                             relative w-full aspect-square mb-6 overflow-hidden border-2 transition-all duration-300 shadow-2xl bg-[#1A1817]
                             ${isSelected ? 'border-[#FF5500] shadow-[0_0_30px_rgba(255,85,0,0.2)]' : 'border-[#3A3532] group-hover:border-[#8A8580]'}
                           `}>
@@ -976,7 +1015,7 @@ export default function BonfireAwardsApp() {
                                     />
                                     <div className="image-fallback hidden absolute inset-0 w-full h-full flex items-center justify-center">
                                       <Shield size={48} className={`transition-colors ${isSelected ? 'text-[#FF5500]' : 'text-[#333]'}`} strokeWidth={1} />
-                                    </div>
+                             </div>
                                   </>
                                 ) : (
                                   <Shield size={48} className={`transition-colors ${isSelected ? 'text-[#FF5500]' : 'text-[#333]'}`} strokeWidth={1} />
@@ -988,11 +1027,11 @@ export default function BonfireAwardsApp() {
                                <div className="absolute inset-0 bg-[#FF5500]/10 flex items-center justify-center backdrop-blur-[1px]">
                                  <div className="w-12 h-12 bg-[#FF5500] rounded-full flex items-center justify-center shadow-lg transition-all duration-200 scale-100">
                                    <Check className="text-[#110F0E]" size={24} strokeWidth={3} />
-                                 </div>
-                               </div>
-                             )}
-                          </div>
-
+                                </div>
+                             </div>
+                           )}
+                              </div>
+                              
                           {/* Info */}
                           <div className="text-center w-full px-2">
                              <h3 className={`font-heading font-bold text-lg mb-2 truncate transition-colors ${isSelected ? 'text-[#FF5500]' : 'text-[#E8E6D1]'}`}>
@@ -1003,8 +1042,8 @@ export default function BonfireAwardsApp() {
                              </div>
                              <p className="text-[#555] text-xs font-body italic truncate">
                                {nominee.desc}
-                             </p>
-                          </div>
+                              </p>
+                           </div>
                         </div>
                       );
                     })}
@@ -1024,7 +1063,7 @@ export default function BonfireAwardsApp() {
                        <span className="font-heading text-sm text-[#8A8580] uppercase mb-2">Воздержаться</span>
                        <span className="text-[10px] font-body text-[#555]">Вынести приговор позже</span>
                     </div>
-                  </div>
+            </div>
 
                   {/* Mobile Navigation Buttons */}
                   <div className="md:hidden mt-8 flex justify-between items-center gap-4">
@@ -1042,14 +1081,14 @@ export default function BonfireAwardsApp() {
                         Далее <ChevronRight size={18} />
                       </button>
                     ) : (
-                      <button 
-                        onClick={handleSubmit} 
+              <button 
+                onClick={handleSubmit}
                         className="px-4 py-3 bg-[#FF5500] text-[#110F0E] font-heading text-xs uppercase flex items-center gap-2 hover:bg-[#FF4400] transition-all active:scale-95 font-bold flex-1"
-                      >
+              >
                         <Feather size={18} /> Завершить
-                      </button>
+              </button>
                     )}
-                  </div>
+            </div>
               </div>
             )}
 
@@ -1104,7 +1143,7 @@ export default function BonfireAwardsApp() {
                      <div className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${
                        votingEnabled ? 'translate-x-6' : 'translate-x-0'
                      }`}></div>
-                   </button>
+               </button>
                    <span className={`text-xs font-heading uppercase ${
                      votingEnabled ? 'text-[#FF5500]' : 'text-[#888]'
                    }`}>
@@ -1363,15 +1402,15 @@ export default function BonfireAwardsApp() {
                                {/* Or create new */}
                                <div className="border-t border-[#3A3532] pt-6">
                                  <h5 className="text-xs font-heading text-[#888] uppercase mb-4 tracking-widest">Или создать нового номинанта</h5>
-                                 <div className="grid grid-cols-2 gap-6 mb-6">
+                               <div className="grid grid-cols-2 gap-6 mb-6">
                                     <input placeholder="Имя" className="bg-transparent border-b border-[#3A3532] py-2 text-sm text-[#E8E6D1] focus:border-[#FF5500] outline-none font-heading" value={newNominee.name} onChange={(e) => setNewNominee({...newNominee, name: e.target.value})} />
                                     <input placeholder="Титул/Роль" className="bg-transparent border-b border-[#3A3532] py-2 text-sm text-[#E8E6D1] focus:border-[#FF5500] outline-none font-heading" value={newNominee.role} onChange={(e) => setNewNominee({...newNominee, role: e.target.value})} />
-                                 </div>
+                               </div>
                                  <input placeholder="URL изображения (необязательно)" className="w-full bg-transparent border-b border-[#3A3532] py-2 text-sm text-[#E8E6D1] focus:border-[#FF5500] outline-none mb-6 font-body" value={newNominee.imageUrl} onChange={(e) => setNewNominee({...newNominee, imageUrl: e.target.value})} />
                                  <input placeholder="Легенда (Описание)" className="w-full bg-transparent border-b border-[#3A3532] py-2 text-sm text-[#E8E6D1] focus:border-[#FF5500] outline-none mb-6 font-body" value={newNominee.desc} onChange={(e) => setNewNominee({...newNominee, desc: e.target.value})} />
-                                 <button onClick={() => handleAddNominee(cat.id)} className="w-full bg-[#333] hover:bg-[#FF5500] hover:text-[#110F0E] text-[#E8E6D1] font-heading text-xs uppercase py-3 transition-colors flex items-center justify-center gap-2 tracking-widest">
+                               <button onClick={() => handleAddNominee(cat.id)} className="w-full bg-[#333] hover:bg-[#FF5500] hover:text-[#110F0E] text-[#E8E6D1] font-heading text-xs uppercase py-3 transition-colors flex items-center justify-center gap-2 tracking-widest">
                                    <Plus size={14} /> Создать и добавить
-                                 </button>
+                               </button>
                                </div>
                             </div>
                           </>
