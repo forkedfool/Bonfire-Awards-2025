@@ -13,10 +13,15 @@ function fetchWithTimeout(url, options, timeout = API_TIMEOUT) {
   ]);
 }
 
-// Получение токена (будет использоваться позже, когда добавим API авторизации)
+// Получение токена из OIDC
 let getAuthToken = async () => {
-  // Пока возвращаем null, позже здесь будет логика получения токена
-  return null;
+  try {
+    const { getAccessToken } = await import('./auth.js');
+    return await getAccessToken();
+  } catch (error) {
+    console.error('Ошибка получения токена:', error);
+    return null;
+  }
 };
 
 // Утилита для API запросов

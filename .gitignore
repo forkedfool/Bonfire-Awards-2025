@@ -177,3 +177,55 @@ build/
 # Local development
 .local
 
+# Sensitive data and secrets
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+secrets/
+.secrets/
+
+# OIDC/OAuth tokens and state
+oidc-*.json
+*.token
+sessionStorage
+localStorage
+
+# Backup files
+*.bak
+*.backup
+*~
+
+# IDE specific
+.vscode/settings.json
+.vscode/launch.json
+.idea/workspace.xml
+.idea/tasks.xml
+.idea/dictionaries
+.idea/shelf
+
+# Testing
+coverage/
+.nyc_output/
+test-results/
+playwright-report/
+
+# Misc
+.DS_Store
+*.swp
+*.swo
+.project
+.classpath
+.settings/
+
+# Public repository specific
+# Note: client_secret in src/auth.js is a fallback for development
+# In production, always use environment variables!
+
+# Lock files (optional - some prefer to commit package-lock.json)
+# Uncomment if you don't want to commit lock files:
+# package-lock.json
+# yarn.lock
+# pnpm-lock.yaml
+

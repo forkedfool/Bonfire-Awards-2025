@@ -38,17 +38,40 @@ npm run preview
 
 ### Переменные окружения
 
-Создайте файл `.env.production` для production:
+**Важно:** Перед запуском необходимо создать файл с переменными окружения!
+
+Создайте файл `.env.development` для разработки:
 
 ```env
-VITE_API_URL=https://yourdomain.com/api
-```
+# Bonfire OpenID Connect (обязательные)
+VITE_BONFIRE_CLIENT_ID=your_client_id_here
+VITE_BONFIRE_CLIENT_SECRET=your_client_secret_here
 
-Для разработки создайте `.env.development`:
-
-```env
+# API URL
 VITE_API_URL=http://localhost:3000/api
 ```
+
+Для production создайте `.env.production`:
+
+```env
+# Bonfire OpenID Connect (обязательные)
+VITE_BONFIRE_CLIENT_ID=your_client_id_here
+VITE_BONFIRE_CLIENT_SECRET=your_client_secret_here
+
+# API URL
+VITE_API_URL=https://yourdomain.com/api
+
+# Redirect URI (опционально, автоматически определяется)
+# VITE_BONFIRE_REDIRECT_URI=https://yourdomain.com/auth/callback
+```
+
+**Где получить credentials:** Обратитесь к разработчику приложения Bonfire для получения Client ID и Client Secret.
+
+**Важно:** Убедитесь, что redirect URI в Bonfire настроен на `https://yourdomain.com/auth/callback` (или ваш домен).
+
+## 🔐 Авторизация
+
+Приложение использует Bonfire OpenID Connect для авторизации. Пользователи должны войти через Bonfire, чтобы получить доступ к голосованию.
 
 ## 📖 Документация
 

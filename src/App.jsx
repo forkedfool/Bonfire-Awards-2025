@@ -5,9 +5,15 @@ import {
   Edit, Trash2, Plus, BarChart, Save, LogOut, ChevronRight, X 
 } from 'lucide-react';
 import { categoriesAPI, votesAPI, setAuthTokenGetter } from './api.js';
+import { useAuth } from './AuthContext.jsx';
+import { signIn, signOut } from './auth.js';
 import Privacy from './Privacy.jsx';
+import AuthCallback from './AuthCallback.jsx';
 
 export default function BonfireAwardsApp() {
+  // Auth
+  const { user, isAuthenticated, isLoading: authLoading, accessToken } = useAuth();
+  
   // State
   const [categories, setCategories] = useState([]);
   const [view, setView] = useState('landing'); // 'landing', 'voting', 'success', 'admin-login', 'admin-dashboard'
@@ -32,14 +38,23 @@ export default function BonfireAwardsApp() {
 
   // Настройка API и загрузка данных при монтировании
   useEffect(() => {
-    // Настраиваем получение токена для API (пока возвращаем null, позже добавим авторизацию)
+    // Настраиваем получение токена для API из OIDC
     setAuthTokenGetter(async () => {
-      // Позже здесь будет логика получения токена из API авторизации
-      return null;
+      return accessToken;
     });
 
-    loadInitialData();
-  }, []);
+    if (!authLoading) {
+      loadInitialData();
+    }
+  }, [accessToken, authLoading]);
+
+  // Обработка callback после авторизации
+  useEffect(() => {
+    if (isAuthenticated && user && view === 'landing') {
+      // После успешной авторизации автоматически переходим на голосование
+      setView('voting');
+    }
+  }, [isAuthenticated, user, view]);
 
   async function loadInitialData() {
     try {
@@ -113,9 +128,24 @@ export default function BonfireAwardsApp() {
   }
 
   // Navigation Handlers
-  const handleLogin = () => {
-    // Простая кнопка логина - сразу переводит на голосование
-    setView('voting');
+  const handleLogin = async () => {
+    try {
+      console.log('Нажата кнопка входа, начинаем процесс авторизации...');
+      await signIn();
+      // После успешного входа произойдет редирект на Bonfire, затем обратно
+      // Если редирект не произошел, это нормально - он может быть асинхронным
+    } catch (error) {
+      console.error('Ошибка при входе:', error);
+      alert('Ошибка входа: ' + (error.message || 'Неизвестная ошибка. Проверьте консоль для деталей.'));
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await signOut();
+    } catch (error) {
+      alert('Ошибка выхода: ' + error.message);
+    }
   };
 
   const handleVote = (catId, nomId) => {
@@ -254,6 +284,8 @@ export default function BonfireAwardsApp() {
 
   return (
     <Routes>
+      <Route path="/auth/callback" element={<AuthCallback />} />
+      <Route path="/auth/silent-callback" element={<AuthCallback />} />
       <Route path="/privacy" element={<Privacy />} />
       <Route path="/privacy/" element={<Privacy />} />
       <Route path="/" element={
@@ -329,10 +361,19 @@ export default function BonfireAwardsApp() {
             </Link>
         
         <div className="flex items-center gap-4">
-          {view === 'voting' && (
-             <div className="flex items-center gap-2 text-xs font-heading text-[#8A8580] tracking-widest border border-[#3A3532] px-3 py-1">
-               <span className="w-1.5 h-1.5 bg-[#FF5500] rotate-45"></span>
-               AUTHORIZED
+          {isAuthenticated && user?.profile && (
+             <div className="flex items-center gap-3">
+               <div className="flex items-center gap-2 text-xs font-heading text-[#8A8580] tracking-widest border border-[#3A3532] px-3 py-1">
+                 <span className="w-1.5 h-1.5 bg-[#FF5500] rotate-45"></span>
+                 {user.profile.preferred_username || user.profile.name || 'USER'}
+               </div>
+               <button 
+                 onClick={handleLogout}
+                 className="flex items-center gap-2 text-xs font-heading text-[#555] hover:text-[#FF5500] transition-colors border border-[#3A3532] hover:border-[#FF5500] px-3 py-1"
+               >
+                 <LogOut size={12} />
+                 ВЫХОД
+               </button>
              </div>
           )}
           {view === 'admin-dashboard' && (
@@ -348,7 +389,7 @@ export default function BonfireAwardsApp() {
       <div className="relative z-10 flex-grow flex flex-col">
         
         {/* === LOADING VIEW === */}
-        {isLoading && (
+        {(isLoading || authLoading) && (
           <div className="flex items-center justify-center flex-grow">
             <div className="text-center">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#FF5500] mx-auto mb-4"></div>
@@ -358,7 +399,7 @@ export default function BonfireAwardsApp() {
         )}
 
         {/* === LANDING === */}
-        {!isLoading && view === 'landing' && (
+        {!isLoading && !authLoading && view === 'landing' && (
           <header className="flex flex-col items-center justify-center flex-grow text-center px-4 py-20">
             
             {/* Center Symbol */}
@@ -386,20 +427,51 @@ export default function BonfireAwardsApp() {
               Honor the legends of our realm."
             </p>
 
-            <button 
-              onClick={handleLogin}
-              className="group relative px-12 py-5 bg-transparent border border-[#555] text-[#E8E6D1] font-heading font-bold uppercase tracking-widest hover:border-[#FF5500] hover:text-[#FF5500] transition-all duration-300"
-            >
-              <div className="flex items-center gap-3">
-                <Scroll size={20} />
-                Sign In
-              </div>
-            </button>
+            {isAuthenticated ? (
+              <button 
+                onClick={() => setView('voting')}
+                className="group relative px-12 py-5 bg-transparent border border-[#FF5500] text-[#FF5500] font-heading font-bold uppercase tracking-widest hover:bg-[#FF5500] hover:text-[#110F0E] transition-all duration-300"
+              >
+                <div className="flex items-center gap-3">
+                  <Scroll size={20} />
+                  Начать голосование
+                </div>
+              </button>
+            ) : (
+              <button 
+                onClick={handleLogin}
+                className="group relative px-12 py-5 bg-transparent border border-[#555] text-[#E8E6D1] font-heading font-bold uppercase tracking-widest hover:border-[#FF5500] hover:text-[#FF5500] transition-all duration-300"
+              >
+                <div className="flex items-center gap-3">
+                  <Scroll size={20} />
+                  Войти через Bonfire
+                </div>
+              </button>
+            )}
           </header>
         )}
 
         {/* === VOTING === */}
-        {!isLoading && view === 'voting' && (
+        {!isLoading && !authLoading && view === 'voting' && (
+          !isAuthenticated ? (
+            <div className="flex flex-col items-center justify-center flex-grow text-center px-4">
+              <div className="mb-8 p-6 border-2 border-[#FF5500] rounded-full">
+                <Lock size={48} className="text-[#FF5500]" />
+              </div>
+              <h2 className="text-4xl font-heading font-bold uppercase mb-4 text-[#E8E6D1]">
+                Требуется авторизация
+              </h2>
+              <p className="text-[#8A8580] font-body mb-8">
+                Войдите через Bonfire, чтобы продолжить голосование.
+              </p>
+              <button 
+                onClick={handleLogin}
+                className="px-8 py-3 bg-transparent border border-[#FF5500] text-[#FF5500] font-heading font-bold uppercase tracking-widest hover:bg-[#FF5500] hover:text-[#110F0E] transition-all duration-300"
+              >
+                Войти через Bonfire
+              </button>
+            </div>
+          ) : (
           <main className="container mx-auto px-4 py-16 max-w-5xl">
             <div className="text-center mb-20">
               <h2 className="text-4xl font-heading font-bold uppercase mb-4 text-[#E8E6D1]">The Chronicles</h2>
@@ -516,6 +588,7 @@ export default function BonfireAwardsApp() {
               </button>
             </div>
           </main>
+          )
         )}
 
         {/* === SUCCESS === */}
