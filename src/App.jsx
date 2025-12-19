@@ -68,12 +68,20 @@ export default function BonfireAwardsApp() {
 
   // Обработка callback после авторизации
   useEffect(() => {
-    if (isAuthenticated && user && view === 'landing') {
-      // После успешной авторизации автоматически переходим на голосование
-      setView('voting');
-      setCurrentStep(0);
+    // Автоматически переходим на голосование только при первой авторизации
+    // Не переходим, если пользователь вернулся на главную со страницы голосования
+    if (isAuthenticated && user && view === 'landing' && categories.length > 0) {
+      const returnedFromVoting = sessionStorage.getItem('returnedFromVoting');
+      if (!returnedFromVoting) {
+        // После успешной авторизации автоматически переходим на голосование
+        setView('voting');
+        setCurrentStep(0);
+      } else {
+        // Убираем флаг, чтобы при следующей авторизации снова работал авто-переход
+        sessionStorage.removeItem('returnedFromVoting');
+      }
     }
-  }, [isAuthenticated, user, view]);
+  }, [isAuthenticated, user, view, categories.length]);
 
   async function loadInitialData() {
     try {
@@ -204,7 +212,10 @@ export default function BonfireAwardsApp() {
       setCurrentStep(prev => prev - 1);
     } else {
       // If on first step, go back to landing
+      // Помечаем, что возвращаемся с голосования, чтобы не было автоматического перехода обратно
+      sessionStorage.setItem('returnedFromVoting', 'true');
       setView('landing');
+      setCurrentStep(0);
     }
   };
 
@@ -572,18 +583,33 @@ export default function BonfireAwardsApp() {
             </p>
 
             {isAuthenticated ? (
-              <button 
-                onClick={() => {
-                  setView('voting');
-                  setCurrentStep(0);
-                }}
-                className="group relative px-12 py-5 bg-transparent border border-[#FF5500] text-[#FF5500] font-heading font-bold uppercase tracking-widest hover:bg-[#FF5500] hover:text-[#110F0E] transition-all duration-300"
-              >
-                <div className="flex items-center gap-3">
-                  <Scroll size={20} />
-                  Начать голосование
-                </div>
-              </button>
+              categories.length > 0 ? (
+                <button 
+                  onClick={() => {
+                    setView('voting');
+                    setCurrentStep(0);
+                  }}
+                  className="group relative px-12 py-5 bg-transparent border border-[#FF5500] text-[#FF5500] font-heading font-bold uppercase tracking-widest hover:bg-[#FF5500] hover:text-[#110F0E] transition-all duration-300"
+                >
+                  <div className="flex items-center gap-3">
+                    <Scroll size={20} />
+                    К голосованию
+                  </div>
+                </button>
+              ) : (
+                <button 
+                  onClick={() => {
+                    setView('voting');
+                    setCurrentStep(0);
+                  }}
+                  className="group relative px-12 py-5 bg-transparent border border-[#FF5500] text-[#FF5500] font-heading font-bold uppercase tracking-widest hover:bg-[#FF5500] hover:text-[#110F0E] transition-all duration-300"
+                >
+                  <div className="flex items-center gap-3">
+                    <Scroll size={20} />
+                    Начать голосование
+                  </div>
+                </button>
+              )
             ) : (
               <button 
                 onClick={handleLogin}
