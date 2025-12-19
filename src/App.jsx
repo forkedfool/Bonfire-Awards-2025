@@ -186,7 +186,17 @@ export default function BonfireAwardsApp() {
     }
 
     try {
+      const userId = user?.profile?.sub;
+      console.log('[CLIENT] Checking admin status for User ID:', userId);
+      
       const result = await adminAPI.checkAdmin();
+      
+      console.log('[CLIENT] Admin check result:', {
+        isAdmin: result.isAdmin,
+        userId: result.userId,
+        adminIds: result.adminIds,
+      });
+      
       setIsAdmin(result.isAdmin || false);
       
       // Если пользователь админ, автоматически открываем админ-панель
@@ -197,8 +207,11 @@ export default function BonfireAwardsApp() {
           // Игнорируем ошибки загрузки статистики
         }
         setView('admin-dashboard');
+      } else if (!result.isAdmin) {
+        console.log('[CLIENT] User is not admin. User ID:', userId, 'Admin IDs:', result.adminIds);
       }
     } catch (error) {
+      console.error('[CLIENT] Error checking admin status:', error);
       setIsAdmin(false);
     }
   }

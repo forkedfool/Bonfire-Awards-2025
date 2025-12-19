@@ -4,6 +4,7 @@ import dotenv from 'dotenv';
 import votesRouter from './routes/votes.js';
 import adminRouter from './routes/admin.js';
 import authRouter from './routes/auth.js';
+import { config } from './config.js';
 
 dotenv.config();
 
@@ -50,6 +51,18 @@ app.use((err, req, res, next) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+  console.log(`🚀 Server running on port ${PORT}`);
+  console.log('=== ADMIN CONFIGURATION ===');
+  console.log('Admin User IDs:', config.admin.userIds);
+  console.log('Admin User IDs count:', config.admin.userIds?.length || 0);
+  if (config.admin.userIds && config.admin.userIds.length > 0) {
+    config.admin.userIds.forEach((id, index) => {
+      console.log(`  [${index}]: "${id}" (length: ${id.length}, type: ${typeof id})`);
+    });
+  } else {
+    console.log('⚠️  WARNING: No admin user IDs configured!');
+    console.log('   Set ADMIN_USER_IDS in .env file');
+  }
+  console.log('===========================');
 });
 

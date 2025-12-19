@@ -19,15 +19,35 @@ router.get('/check', verifyBonfireToken, (req, res) => {
       });
     }
 
+    // Детальное логирование для отладки
+    console.log('=== ADMIN CHECK DEBUG ===');
+    console.log('User ID from token:', userId);
+    console.log('User ID type:', typeof userId);
+    console.log('Admin IDs from config:', config.admin.userIds);
+    console.log('Admin IDs count:', config.admin.userIds?.length || 0);
+    
+    // Проверяем каждый ID отдельно
+    if (config.admin.userIds && config.admin.userIds.length > 0) {
+      config.admin.userIds.forEach((adminId, index) => {
+        console.log(`Admin ID [${index}]: "${adminId}" (type: ${typeof adminId}, length: ${adminId.length})`);
+        console.log(`  Comparison with user ID: "${adminId}" === "${userId}" = ${adminId === userId}`);
+        console.log(`  Strict equality: ${adminId === userId}`);
+        console.log(`  Includes check: ${config.admin.userIds.includes(userId)}`);
+      });
+    } else {
+      console.log('WARNING: ADMIN_USER_IDS is empty or not set!');
+    }
+    
     const isAdmin = config.admin.userIds && config.admin.userIds.includes(userId);
     
-    // Логируем проверку доступа
-    console.log(`[ADMIN CHECK] User ID: ${userId}, Email: ${req.user.email || 'unknown'}, Is Admin: ${isAdmin}`);
+    console.log(`Result: Is Admin = ${isAdmin}`);
+    console.log('========================');
     
     res.json({ 
       success: true,
       isAdmin: isAdmin,
-      userId: userId
+      userId: userId,
+      adminIds: config.admin.userIds, // Для отладки
     });
   } catch (error) {
     console.error('Error checking admin status:', error);
