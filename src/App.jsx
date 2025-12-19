@@ -222,22 +222,6 @@ export default function BonfireAwardsApp() {
     }
   };
 
-  const handleSubmit = async () => {
-    if (!votingEnabled) {
-      alert('Голосование в данный момент закрыто');
-      return;
-    }
-    
-    try {
-      const userId = user?.profile?.sub;
-      await votesAPI.submit(votes);
-      console.log(`[VOTE SUBMITTED] User ID: ${userId || 'unknown'}`);
-      setView('success');
-    } catch (error) {
-      alert('Ошибка при отправке голосов: ' + error.message);
-    }
-  };
-
   const handleToggleVoting = async () => {
     try {
       const newStatus = !votingEnabled;
