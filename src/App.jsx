@@ -103,7 +103,13 @@ export default function BonfireAwardsApp() {
   async function loadUserVotes() {
     try {
       const data = await votesAPI.getMyVotes();
-      setVotes(data.votes || {});
+      // Обрабатываем новый формат ответа { success: true, votes: {...} }
+      // или старый формат { votes: {...} }
+      if (data && typeof data === 'object') {
+        setVotes(data.votes || data || {});
+      } else {
+        setVotes({});
+      }
     } catch (error) {
       console.warn('Не удалось загрузить голоса:', error);
       // Не критично, если пользователь не авторизован
@@ -114,12 +120,19 @@ export default function BonfireAwardsApp() {
     try {
       const data = await votesAPI.getAllStats();
       const statsMap = {};
-      data.stats.forEach(stat => {
-        if (!statsMap[stat.category_id]) {
-          statsMap[stat.category_id] = {};
-        }
-        statsMap[stat.category_id][stat.nominee_id] = stat.vote_count;
-      });
+      
+      // Обрабатываем новый формат ответа { success: true, stats: [...] }
+      const stats = data.stats || (Array.isArray(data) ? data : []);
+      
+      if (Array.isArray(stats)) {
+        stats.forEach(stat => {
+          if (!statsMap[stat.category_id]) {
+            statsMap[stat.category_id] = {};
+          }
+          statsMap[stat.category_id][stat.nominee_id] = stat.vote_count;
+        });
+      }
+      
       setVoteStats(statsMap);
     } catch (error) {
       console.error('Ошибка загрузки статистики:', error);

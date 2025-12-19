@@ -47,37 +47,73 @@ async function apiRequest(endpoint, options = {}) {
     
     console.log('API Response status:', response.status, response.statusText);
     
-    // Если ответ не JSON
+    // Читаем ответ как текст сначала, чтобы можно было парсить JSON или обработать ошибку
+    const responseText = await response.text();
     let data;
-    const contentType = response.headers.get('content-type');
-    if (!contentType || !contentType.includes('application/json')) {
-      const text = await response.text();
-      console.error('Non-JSON response:', text.substring(0, 200));
-      throw new Error(`Сервер вернул неверный формат ответа: ${contentType || 'unknown'}`);
-    }
     
+    // Пытаемся распарсить как JSON
     try {
-      data = await response.json();
-    } catch (e) {
-      console.error('JSON parse error:', e);
-      throw new Error('Сервер недоступен или вернул неверный ответ');
+      data = responseText ? JSON.parse(responseText) : null;
+    } catch (parseError) {
+      // Если не JSON, но статус успешный - возвращаем текст
+      if (response.ok) {
+        return responseText;
+      }
+      // Если ошибка и не JSON - создаем объект ошибки
+      console.error('JSON parse error:', parseError);
+      console.error('Response text:', responseText.substring(0, 500));
+      throw new Error(`Сервер вернул неверный формат ответа: ${response.status} ${response.statusText}`);
     }
     
+    // Обрабатываем ответы сервера
     if (!response.ok) {
       console.error('API Error response:', data);
-      throw new Error(data.error || 'Ошибка запроса');
+      
+      // Если сервер вернул структурированную ошибку
+      if (data && typeof data === 'object') {
+        const errorMessage = data.error || data.message || 'Ошибка запроса';
+        const error = new Error(errorMessage);
+        // Добавляем дополнительные данные об ошибке
+        if (data.details) {
+          error.details = data.details;
+        }
+        if (data.success === false) {
+          error.serverError = true;
+        }
+        throw error;
+      }
+      
+      throw new Error(data?.error || `Ошибка сервера: ${response.status} ${response.statusText}`);
+    }
+    
+    // Проверяем структуру успешного ответа
+    // Если сервер вернул { success: true, ... }, извлекаем данные
+    if (data && typeof data === 'object' && 'success' in data) {
+      if (data.success === false) {
+        throw new Error(data.error || 'Запрос завершился с ошибкой');
+      }
+      // Возвращаем данные без флага success, если есть другие поля
+      const { success, ...rest } = data;
+      return Object.keys(rest).length > 0 ? rest : data;
     }
     
     return data;
   } catch (error) {
+    // Обработка сетевых ошибок
     if (error.message.includes('Таймаут запроса')) {
       throw new Error('Превышено время ожидания ответа сервера');
     }
     if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
       throw new Error('Бекенд недоступен. Убедитесь, что сервер запущен на порту 3000');
     }
+    
+    // Если это уже наша ошибка с сообщением - пробрасываем как есть
+    if (error.message && !error.message.includes('undefined')) {
+      throw error;
+    }
+    
     console.error('API Error:', error);
-    throw error;
+    throw new Error('Произошла ошибка при выполнении запроса');
   }
 }
 

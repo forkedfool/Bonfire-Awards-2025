@@ -24,11 +24,26 @@ app.use('/api/votes', votesRouter);
 app.use('/api/admin', adminRouter);
 app.use('/api/auth', authRouter);
 
+// Публичный эндпоинт для категорий (проксируем к votes router)
+// Это позволяет клиенту использовать /api/categories вместо /api/votes/categories
+app.get('/api/categories', (req, res, next) => {
+  // Создаем новый запрос с измененным путем для роутера
+  const originalUrl = req.url;
+  req.url = '/categories';
+  votesRouter(req, res, (err) => {
+    req.url = originalUrl; // Восстанавливаем оригинальный URL
+    if (err) next(err);
+  });
+});
+
 // Error handler
 app.use((err, req, res, next) => {
   console.error('Error:', err);
-  res.status(err.status || 500).json({
+  const status = err.status || err.statusCode || 500;
+  res.status(status).json({
+    success: false,
     error: err.message || 'Internal server error',
+    ...(process.env.NODE_ENV === 'development' && { stack: err.stack }),
   });
 });
 

@@ -1,7 +1,30 @@
 import express from 'express';
 import { config } from '../config.js';
+import { verifyBonfireToken } from '../middleware/auth.js';
 
 const router = express.Router();
+
+// Получить информацию о текущем пользователе
+// Требует валидный Bearer token в заголовке Authorization
+router.get('/me', verifyBonfireToken, (req, res) => {
+  try {
+    // Информация о пользователе уже добавлена в req.user middleware'ом verifyBonfireToken
+    res.json({
+      success: true,
+      user: {
+        id: req.user.id,
+        email: req.user.email,
+        username: req.user.username,
+      },
+    });
+  } catch (error) {
+    console.error('Error getting user info:', error);
+    res.status(500).json({ 
+      success: false,
+      error: 'Failed to get user information' 
+    });
+  }
+});
 
 // Обмен authorization code на токены (если Bonfire требует client_secret)
 // ВАЖНО: Этот endpoint должен использоваться только если Bonfire требует client_secret
@@ -11,7 +34,10 @@ router.post('/exchange-token', async (req, res) => {
     const { code, code_verifier, redirect_uri } = req.body;
 
     if (!code) {
-      return res.status(400).json({ error: 'code is required' });
+      return res.status(400).json({ 
+        success: false,
+        error: 'code is required' 
+      });
     }
 
     // Если Bonfire требует client_secret для обмена токенов
@@ -35,16 +61,23 @@ router.post('/exchange-token', async (req, res) => {
       const errorText = await tokenResponse.text();
       console.error('Token exchange error:', errorText);
       return res.status(tokenResponse.status).json({ 
+        success: false,
         error: 'Failed to exchange code for tokens',
         details: errorText 
       });
     }
 
     const tokens = await tokenResponse.json();
-    res.json(tokens);
+    res.json({
+      success: true,
+      ...tokens,
+    });
   } catch (error) {
     console.error('Error exchanging token:', error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ 
+      success: false,
+      error: error.message || 'Internal server error' 
+    });
   }
 });
 
