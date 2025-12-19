@@ -226,6 +226,11 @@ export const nomineesAPI = {
   },
 };
 
+// Настройки голосования
+export const votingAPI = {
+  getStatus: () => apiRequest('/votes/voting-status'),
+};
+
 // Админка
 export const adminAPI = {
   verifyPassword: (password) => apiRequest('/admin/verify', {
@@ -233,6 +238,11 @@ export const adminAPI = {
     body: JSON.stringify({ password }),
   }),
   checkAdmin: () => apiRequest('/admin/check'),
+  getVotingStatus: () => apiRequest('/admin/voting-status'),
+  setVotingStatus: (enabled) => apiRequest('/admin/voting-status', {
+    method: 'PUT',
+    body: JSON.stringify({ enabled }),
+  }),
 };
 
 // Установка функции для получения токена (будет использоваться позже)

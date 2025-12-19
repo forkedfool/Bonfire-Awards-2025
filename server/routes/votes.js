@@ -4,6 +4,36 @@ import { supabase, TABLES } from '../db/supabase.js';
 
 const router = express.Router();
 
+// Получить статус голосования (публичный endpoint)
+router.get('/voting-status', async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from(TABLES.SETTINGS)
+      .select('value')
+      .eq('key', 'voting_enabled')
+      .single();
+
+    if (error && error.code !== 'PGRST116') {
+      throw error;
+    }
+
+    // По умолчанию голосование включено, если настройка не найдена
+    const votingEnabled = data?.value === 'true' || !data;
+    
+    res.json({ 
+      success: true,
+      votingEnabled 
+    });
+  } catch (error) {
+    console.error('Error fetching voting status:', error);
+    // В случае ошибки считаем, что голосование включено
+    res.json({ 
+      success: true,
+      votingEnabled: true 
+    });
+  }
+});
+
 // Получить все категории с номинантами (публичный endpoint)
 router.get('/categories', async (req, res) => {
   try {

@@ -648,6 +648,69 @@ router.delete('/category-nominees/:id', async (req, res) => {
   }
 });
 
+// ========== НАСТРОЙКИ ==========
+
+// Получить статус голосования
+router.get('/voting-status', async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from(TABLES.SETTINGS)
+      .select('value')
+      .eq('key', 'voting_enabled')
+      .single();
+
+    if (error && error.code !== 'PGRST116') {
+      throw error;
+    }
+
+    // По умолчанию голосование включено, если настройка не найдена
+    const votingEnabled = data?.value === 'true' || !data;
+    
+    res.json({ 
+      success: true,
+      votingEnabled 
+    });
+  } catch (error) {
+    console.error('Error fetching voting status:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Изменить статус голосования
+router.put('/voting-status', async (req, res) => {
+  try {
+    const { enabled } = req.body;
+
+    if (typeof enabled !== 'boolean') {
+      return res.status(400).json({ error: 'enabled must be a boolean' });
+    }
+
+    // Используем upsert для создания или обновления настройки
+    const { data, error } = await supabase
+      .from(TABLES.SETTINGS)
+      .upsert(
+        { 
+          key: 'voting_enabled', 
+          value: enabled.toString(),
+          updated_at: new Date().toISOString()
+        },
+        { onConflict: 'key' }
+      )
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    res.json({ 
+      success: true,
+      votingEnabled: enabled 
+    });
+  } catch (error) {
+    console.error('Error updating voting status:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // ========== ГОЛОСА И СТАТИСТИКА ==========
 
 // Получить все голоса

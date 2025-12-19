@@ -75,6 +75,26 @@ CREATE POLICY "Authenticated users can create votes" ON votes
 CREATE POLICY "Users can update their own votes" ON votes
   FOR UPDATE USING (auth.uid()::text = user_id);
 
+-- Настройки приложения
+CREATE TABLE IF NOT EXISTS settings (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  key TEXT NOT NULL UNIQUE,
+  value TEXT NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Инициализация настройки голосования (по умолчанию включено)
+INSERT INTO settings (key, value) 
+VALUES ('voting_enabled', 'true')
+ON CONFLICT (key) DO NOTHING;
+
+-- RLS для settings (публичное чтение, админское изменение через бекенд)
+ALTER TABLE settings ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Settings are viewable by everyone" ON settings
+  FOR SELECT USING (true);
+
 -- Примечание: Админские операции (создание/редактирование/удаление категорий и номинантов)
 -- выполняются через бекенд с использованием Service Role Key, который обходит RLS
 

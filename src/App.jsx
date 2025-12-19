@@ -4,7 +4,7 @@ import {
   Flame, Scroll, Shield, Sword, Crown, Feather, 
   Edit, Trash2, Plus, BarChart, Save, LogOut, ChevronRight, ChevronLeft, X, Check 
 } from 'lucide-react';
-import { categoriesAPI, votesAPI, adminAPI, nomineesAPI, setAuthTokenGetter } from './api.js';
+import { categoriesAPI, votesAPI, adminAPI, nomineesAPI, votingAPI, setAuthTokenGetter } from './api.js';
 import { useAuth } from './AuthContext.jsx';
 import { signIn, signOut } from './auth.js';
 import Privacy from './Privacy.jsx';
@@ -44,6 +44,9 @@ export default function BonfireAwardsApp() {
   const [nomineeSearchQuery, setNomineeSearchQuery] = useState('');
   const [isAddingNomineeToCategory, setIsAddingNomineeToCategory] = useState(false);
   const [adminView, setAdminView] = useState('categories'); // 'categories' or 'nominees'
+  
+  // Voting Status State
+  const [votingEnabled, setVotingEnabled] = useState(true);
 
   // Настройка API и загрузка данных при монтировании
   useEffect(() => {
@@ -220,6 +223,38 @@ export default function BonfireAwardsApp() {
   };
 
   const handleSubmit = async () => {
+    if (!votingEnabled) {
+      alert('Голосование в данный момент закрыто');
+      return;
+    }
+    
+    try {
+      const userId = user?.profile?.sub;
+      await votesAPI.submit(votes);
+      console.log(`[VOTE SUBMITTED] User ID: ${userId || 'unknown'}`);
+      setView('success');
+    } catch (error) {
+      alert('Ошибка при отправке голосов: ' + error.message);
+    }
+  };
+
+  const handleToggleVoting = async () => {
+    try {
+      const newStatus = !votingEnabled;
+      await adminAPI.setVotingStatus(newStatus);
+      setVotingEnabled(newStatus);
+      console.log(`[ADMIN ACTION] Voting ${newStatus ? 'enabled' : 'disabled'}`);
+    } catch (error) {
+      alert('Ошибка изменения статуса голосования: ' + error.message);
+    }
+  };
+
+  const handleSubmit = async () => {
+    if (!votingEnabled) {
+      alert('Голосование в данный момент закрыто');
+      return;
+    }
+    
     try {
       const userId = user?.profile?.sub;
       await votesAPI.submit(votes);
@@ -582,7 +617,19 @@ export default function BonfireAwardsApp() {
               Honor the legends of our realm."
             </p>
 
-            {isAuthenticated ? (
+            {!votingEnabled ? (
+              <div className="text-center">
+                <div className="mb-6 p-6 border-2 border-[#555] rounded">
+                  <Shield size={48} className="text-[#555] mx-auto mb-4" />
+                  <p className="text-[#8A8580] font-body text-lg">
+                    Голосование ещё закрыто
+                  </p>
+                  <p className="text-[#555] font-body text-sm mt-2 italic">
+                    Дождитесь открытия голосования
+                  </p>
+                </div>
+              </div>
+            ) : isAuthenticated ? (
               categories.length > 0 ? (
                 <button 
                   onClick={() => {
@@ -626,7 +673,28 @@ export default function BonfireAwardsApp() {
 
         {/* === VOTING (SLIDER LAYOUT) === */}
         {!isLoading && !authLoading && view === 'voting' && (
-          !isAuthenticated ? (
+          !votingEnabled ? (
+            <div className="flex flex-col items-center justify-center flex-grow text-center px-4">
+              <div className="mb-8 p-6 border-2 border-[#555] rounded-full">
+                <Shield size={48} className="text-[#555]" />
+              </div>
+              <h2 className="text-4xl font-heading font-bold uppercase mb-4 text-[#E8E6D1]">
+                Голосование закрыто
+              </h2>
+              <p className="text-[#8A8580] font-body mb-8">
+                Голосование ещё закрыто. Дождитесь открытия голосования.
+              </p>
+              <button 
+                onClick={() => {
+                  setView('landing');
+                  setCurrentStep(0);
+                }}
+                className="px-8 py-3 bg-transparent border border-[#555] text-[#888] font-heading font-bold uppercase tracking-widest hover:border-[#FF5500] hover:text-[#FF5500] transition-all duration-300"
+              >
+                Вернуться на главную
+              </button>
+            </div>
+          ) : !isAuthenticated ? (
             <div className="flex flex-col items-center justify-center flex-grow text-center px-4">
               <div className="mb-8 p-6 border-2 border-[#FF5500] rounded-full">
                 <Crown size={48} className="text-[#FF5500]" />
@@ -825,6 +893,25 @@ export default function BonfireAwardsApp() {
                   <p className="text-[#555] font-heading text-xs tracking-widest">MANAGE THE REALM</p>
                </div>
                <div className="flex items-center gap-4">
+                 {/* Voting Status Toggle */}
+                 <div className="flex items-center gap-3 border border-[#3A3532] px-4 py-2">
+                   <span className="text-xs font-heading text-[#888] uppercase">Voting:</span>
+                   <button
+                     onClick={handleToggleVoting}
+                     className={`relative w-12 h-6 rounded-full transition-colors ${
+                       votingEnabled ? 'bg-[#FF5500]' : 'bg-[#555]'
+                     }`}
+                   >
+                     <div className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${
+                       votingEnabled ? 'translate-x-6' : 'translate-x-0'
+                     }`}></div>
+                   </button>
+                   <span className={`text-xs font-heading uppercase ${
+                     votingEnabled ? 'text-[#FF5500]' : 'text-[#888]'
+                   }`}>
+                     {votingEnabled ? 'ON' : 'OFF'}
+                   </span>
+                 </div>
                  <div className="flex gap-2 border border-[#3A3532] p-1">
                    <button 
                      onClick={() => setAdminView('categories')}

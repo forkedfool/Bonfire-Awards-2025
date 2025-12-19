@@ -13,5 +13,6 @@ export const TABLES = {
   NOMINEES: 'nominees',
   CATEGORY_NOMINEES: 'category_nominees',
   VOTES: 'votes',
+  SETTINGS: 'settings',
 };
 
