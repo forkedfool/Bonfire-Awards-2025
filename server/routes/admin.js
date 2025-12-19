@@ -90,20 +90,45 @@ router.get('/categories', async (req, res) => {
 // Создать категорию
 router.post('/categories', async (req, res) => {
   try {
-    const { name, description } = req.body;
+    // Поддерживаем как старый формат (name), так и новый (title)
+    const { name, title, code, description } = req.body;
+    const categoryName = title || name;
 
-    if (!name) {
-      return res.status(400).json({ error: 'name is required' });
+    if (!categoryName) {
+      return res.status(400).json({ error: 'name or title is required' });
+    }
+
+    // Сохраняем code в description как JSON для поддержки дополнительных полей
+    let categoryDescription = description || null;
+    if (code || description) {
+      categoryDescription = JSON.stringify({ 
+        code: code || '', 
+        description: description || '' 
+      });
     }
 
     const { data, error } = await supabase
       .from(TABLES.CATEGORIES)
-      .insert({ name, description })
+      .insert({ name: categoryName, description: categoryDescription })
       .select()
       .single();
 
     if (error) throw error;
-    res.json(data);
+    
+    // Преобразуем ответ для фронтенда
+    const response = { ...data, title: data.name };
+    if (categoryDescription) {
+      try {
+        const parsed = JSON.parse(categoryDescription);
+        if (parsed.code) response.code = parsed.code;
+        if (parsed.description) response.description = parsed.description;
+      } catch (e) {
+        response.description = categoryDescription;
+      }
+    }
+    delete response.name;
+    
+    res.json(response);
   } catch (error) {
     console.error('Error creating category:', error);
     res.status(500).json({ error: error.message });
@@ -114,11 +139,24 @@ router.post('/categories', async (req, res) => {
 router.put('/categories/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, description } = req.body;
+    // Поддерживаем как старый формат (name), так и новый (title)
+    const { name, title, code, description } = req.body;
+    
+    const updateData = {};
+    if (title !== undefined) updateData.name = title;
+    if (name !== undefined && title === undefined) updateData.name = name;
+    
+    // Сохраняем code в description как JSON
+    if (code !== undefined || description !== undefined) {
+      updateData.description = JSON.stringify({ 
+        code: code || '', 
+        description: description || '' 
+      });
+    }
 
     const { data, error } = await supabase
       .from(TABLES.CATEGORIES)
-      .update({ name, description })
+      .update(updateData)
       .eq('id', id)
       .select()
       .single();
@@ -128,7 +166,20 @@ router.put('/categories/:id', async (req, res) => {
       return res.status(404).json({ error: 'Category not found' });
     }
 
-    res.json(data);
+    // Преобразуем ответ для фронтенда
+    const response = { ...data, title: data.name };
+    if (data.description) {
+      try {
+        const parsed = JSON.parse(data.description);
+        if (parsed.code) response.code = parsed.code;
+        if (parsed.description) response.description = parsed.description;
+      } catch (e) {
+        response.description = data.description;
+      }
+    }
+    delete response.name;
+
+    res.json(response);
   } catch (error) {
     console.error('Error updating category:', error);
     res.status(500).json({ error: error.message });
@@ -259,6 +310,180 @@ router.delete('/nominees/:id', async (req, res) => {
     res.json({ message: 'Nominee deleted' });
   } catch (error) {
     console.error('Error deleting nominee:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ========== НОМИНАНТЫ В КАТЕГОРИЯХ ==========
+
+// Создать номинанта в категории
+router.post('/categories/:categoryId/nominees', async (req, res) => {
+  try {
+    const { categoryId } = req.params;
+    const { name, desc, role, imageUrl } = req.body;
+
+    if (!name) {
+      return res.status(400).json({ error: 'name is required' });
+    }
+
+    // Преобразуем imageUrl (camelCase) в image_url (snake_case) для базы данных
+    const image_url = imageUrl || null;
+    
+    // Сохраняем desc и role в description как JSON для поддержки дополнительных полей
+    let description = null;
+    if (desc || role) {
+      description = JSON.stringify({ desc: desc || '', role: role || '' });
+    }
+
+    // Создаем номинанта
+    const { data: nominee, error: nomineeError } = await supabase
+      .from(TABLES.NOMINEES)
+      .insert({ name, description, image_url })
+      .select()
+      .single();
+
+    if (nomineeError) throw nomineeError;
+
+    // Связываем номинанта с категорией
+    const { data: relation, error: relationError } = await supabase
+      .from(TABLES.CATEGORY_NOMINEES)
+      .insert({ category_id: categoryId, nominee_id: nominee.id })
+      .select()
+      .single();
+
+    if (relationError) {
+      // Если связь не удалась, удаляем созданного номинанта
+      await supabase.from(TABLES.NOMINEES).delete().eq('id', nominee.id);
+      throw relationError;
+    }
+
+    // Возвращаем номинанта в формате фронтенда
+    const response = {
+      ...nominee,
+      imageUrl: nominee.image_url,
+      desc: desc || '',
+      role: role || '',
+    };
+    delete response.image_url;
+
+    res.json(response);
+  } catch (error) {
+    console.error('Error creating nominee in category:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Обновить номинанта в категории
+router.put('/categories/:categoryId/nominees/:nomineeId', async (req, res) => {
+  try {
+    const { categoryId, nomineeId } = req.params;
+    const { name, desc, role, imageUrl } = req.body;
+
+    // Проверяем, что номинант принадлежит категории
+    const { data: relation, error: relationError } = await supabase
+      .from(TABLES.CATEGORY_NOMINEES)
+      .select('*')
+      .eq('category_id', categoryId)
+      .eq('nominee_id', nomineeId)
+      .single();
+
+    if (relationError || !relation) {
+      return res.status(404).json({ error: 'Nominee not found in this category' });
+    }
+
+    // Преобразуем imageUrl (camelCase) в image_url (snake_case)
+    const updateData = {};
+    if (name !== undefined) updateData.name = name;
+    if (imageUrl !== undefined) updateData.image_url = imageUrl || null;
+    
+    // Сохраняем desc и role в description как JSON
+    if (desc !== undefined || role !== undefined) {
+      updateData.description = JSON.stringify({ 
+        desc: desc || '', 
+        role: role || '' 
+      });
+    }
+
+    const { data: nominee, error: nomineeError } = await supabase
+      .from(TABLES.NOMINEES)
+      .update(updateData)
+      .eq('id', nomineeId)
+      .select()
+      .single();
+
+    if (nomineeError) throw nomineeError;
+    if (!nominee) {
+      return res.status(404).json({ error: 'Nominee not found' });
+    }
+
+    // Возвращаем номинанта в формате фронтенда
+    const response = {
+      ...nominee,
+      imageUrl: nominee.image_url,
+    };
+    delete response.image_url;
+    
+    // Парсим description для извлечения desc и role
+    if (nominee.description) {
+      try {
+        const parsed = JSON.parse(nominee.description);
+        response.desc = parsed.desc || '';
+        response.role = parsed.role || '';
+      } catch (e) {
+        response.desc = nominee.description;
+      }
+    }
+
+    res.json(response);
+  } catch (error) {
+    console.error('Error updating nominee in category:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Удалить номинанта из категории
+router.delete('/categories/:categoryId/nominees/:nomineeId', async (req, res) => {
+  try {
+    const { categoryId, nomineeId } = req.params;
+
+    // Удаляем связь с категорией
+    const { error: relationError } = await supabase
+      .from(TABLES.CATEGORY_NOMINEES)
+      .delete()
+      .eq('category_id', categoryId)
+      .eq('nominee_id', nomineeId);
+
+    if (relationError) throw relationError;
+
+    // Проверяем, есть ли еще связи с этим номинантом
+    const { data: otherRelations, error: checkError } = await supabase
+      .from(TABLES.CATEGORY_NOMINEES)
+      .select('id')
+      .eq('nominee_id', nomineeId)
+      .limit(1);
+
+    if (checkError) throw checkError;
+
+    // Если больше нет связей, удаляем номинанта
+    if (!otherRelations || otherRelations.length === 0) {
+      // Удаляем голоса для этого номинанта
+      await supabase
+        .from(TABLES.VOTES)
+        .delete()
+        .eq('nominee_id', nomineeId);
+
+      // Удаляем номинанта
+      const { error: deleteError } = await supabase
+        .from(TABLES.NOMINEES)
+        .delete()
+        .eq('id', nomineeId);
+
+      if (deleteError) throw deleteError;
+    }
+
+    res.json({ message: 'Nominee removed from category' });
+  } catch (error) {
+    console.error('Error deleting nominee from category:', error);
     res.status(500).json({ error: error.message });
   }
 });

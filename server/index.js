@@ -39,6 +39,35 @@ app.get('/api/categories', (req, res, next) => {
   });
 });
 
+// Прокси для управления номинантами в категориях (требует админских прав)
+// Маршрутизируем /api/categories/:categoryId/nominees к /api/admin/categories/:categoryId/nominees
+app.post('/api/categories/:categoryId/nominees', (req, res, next) => {
+  const originalUrl = req.url;
+  req.url = `/categories/${req.params.categoryId}/nominees`;
+  adminRouter(req, res, (err) => {
+    req.url = originalUrl;
+    if (err) next(err);
+  });
+});
+
+app.put('/api/categories/:categoryId/nominees/:nomineeId', (req, res, next) => {
+  const originalUrl = req.url;
+  req.url = `/categories/${req.params.categoryId}/nominees/${req.params.nomineeId}`;
+  adminRouter(req, res, (err) => {
+    req.url = originalUrl;
+    if (err) next(err);
+  });
+});
+
+app.delete('/api/categories/:categoryId/nominees/:nomineeId', (req, res, next) => {
+  const originalUrl = req.url;
+  req.url = `/categories/${req.params.categoryId}/nominees/${req.params.nomineeId}`;
+  adminRouter(req, res, (err) => {
+    req.url = originalUrl;
+    if (err) next(err);
+  });
+});
+
 // Error handler
 app.use((err, req, res, next) => {
   console.error('Error:', err);

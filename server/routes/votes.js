@@ -60,14 +60,56 @@ router.get('/categories', async (req, res) => {
             };
           }
 
+          // Преобразуем данные номинантов для фронтенда (image_url -> imageUrl)
+          const transformedNominees = (categoryNominees || []).map((cn) => {
+            if (!cn.nominee) return null;
+            const nominee = { ...cn.nominee };
+            // Преобразуем image_url в imageUrl для фронтенда
+            if (nominee.image_url !== undefined) {
+              nominee.imageUrl = nominee.image_url;
+              delete nominee.image_url;
+            }
+            // Парсим description как JSON, если это возможно (для поддержки desc и role)
+            if (nominee.description) {
+              try {
+                const parsed = JSON.parse(nominee.description);
+                if (parsed.desc) nominee.desc = parsed.desc;
+                if (parsed.role) nominee.role = parsed.role;
+              } catch (e) {
+                // Если не JSON, используем как есть
+                nominee.desc = nominee.description;
+              }
+            }
+            return nominee;
+          }).filter(Boolean);
+
+          // Преобразуем категорию для фронтенда (name -> title, description может содержать code)
+          const transformedCategory = { ...category };
+          transformedCategory.title = category.name;
+          // Парсим description как JSON для извлечения code, если это возможно
+          if (category.description) {
+            try {
+              const parsed = JSON.parse(category.description);
+              if (parsed.code) transformedCategory.code = parsed.code;
+              if (parsed.description) transformedCategory.description = parsed.description;
+            } catch (e) {
+              // Если не JSON, используем как description
+              transformedCategory.description = category.description;
+            }
+          }
+          delete transformedCategory.name;
+
           return {
-            ...category,
-            nominees: (categoryNominees || []).map((cn) => cn.nominee).filter(Boolean),
+            ...transformedCategory,
+            nominees: transformedNominees,
           };
         } catch (catError) {
           // Возвращаем категорию без номинантов
+          const transformedCategory = { ...category };
+          transformedCategory.title = category.name;
+          delete transformedCategory.name;
           return {
-            ...category,
+            ...transformedCategory,
             nominees: [],
           };
         }
