@@ -131,11 +131,19 @@ router.get('/categories', async (req, res) => {
             try {
               const parsed = JSON.parse(category.description);
               if (parsed.code) transformedCategory.code = parsed.code;
-              if (parsed.description) transformedCategory.description = parsed.description;
+              // Если внутри JSON есть description и оно не пустое, используем его
+              if (parsed.description && parsed.description.trim() !== '') {
+                transformedCategory.description = parsed.description;
+              } else {
+                // Если description пустое, не устанавливаем его (или устанавливаем null)
+                transformedCategory.description = null;
+              }
             } catch (e) {
               // Если не JSON, используем как description
               transformedCategory.description = category.description;
             }
+          } else {
+            transformedCategory.description = null;
           }
           delete transformedCategory.name;
 

@@ -889,19 +889,57 @@ export default function BonfireAwardsApp() {
                   
                   <div className="text-center mb-12 md:mb-20">
                      <span className="text-[#FF5500] font-heading text-xs tracking-[0.3em] uppercase block mb-4 border-b border-[#FF5500]/30 pb-2 inline-block">
-                       {categories[currentStep].code || categories[currentStep].subtitle || 'КАТЕГОРИЯ'}
+                       {(() => {
+                         const cat = categories[currentStep];
+                         // Если code есть, используем его
+                         if (cat.code) return cat.code.toUpperCase();
+                         // Если subtitle есть, используем его
+                         if (cat.subtitle) return cat.subtitle.toUpperCase();
+                         // Пытаемся извлечь code из description, если это JSON
+                         if (cat.description) {
+                           try {
+                             const parsed = JSON.parse(cat.description);
+                             if (parsed.code) return parsed.code.toUpperCase();
+                           } catch (e) {
+                             // Не JSON, игнорируем
+                           }
+                         }
+                         return 'КАТЕГОРИЯ';
+                       })()}
                      </span>
                      <h2 className="text-3xl md:text-6xl font-heading font-bold text-[#E8E6D1] uppercase drop-shadow-lg">
                        {categories[currentStep].title}
                      </h2>
-                     {categories[currentStep].description && (
-                       <p className="text-[#8A8580] text-sm font-body font-light italic mt-4 max-w-2xl mx-auto">
-                         {categories[currentStep].description}
-                       </p>
-                     )}
+                     {(() => {
+                       const cat = categories[currentStep];
+                       // Если description есть и это не JSON-строка, показываем его
+                       if (cat.description) {
+                         try {
+                           const parsed = JSON.parse(cat.description);
+                           // Если это JSON и есть description внутри, показываем его
+                           if (parsed.description && parsed.description.trim() !== '') {
+                             return (
+                               <p className="text-[#8A8580] text-sm font-body font-light italic mt-4 max-w-2xl mx-auto">
+                                 {parsed.description}
+                               </p>
+                             );
+                           }
+                           // Если это JSON, но description пустое, не показываем ничего
+                           return null;
+                         } catch (e) {
+                           // Если это не JSON, показываем как обычный текст
+                           return (
+                             <p className="text-[#8A8580] text-sm font-body font-light italic mt-4 max-w-2xl mx-auto">
+                               {cat.description}
+                             </p>
+                           );
+                         }
+                       }
+                       return null;
+                     })()}
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6 md:gap-8">
+                  <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-6 md:gap-8">
                     {categories[currentStep].nominees.map((nominee) => {
                       const isSelected = votes[categories[currentStep].id] === nominee.id;
                       return (
