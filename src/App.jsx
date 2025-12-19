@@ -1323,7 +1323,7 @@ export default function BonfireAwardsApp() {
                   <span className="font-heading font-bold text-[#E8E6D1] tracking-widest">BONFIRE</span>
                </div>
                <p className="text-[#555] text-xs font-body max-w-xs leading-relaxed">
-                  Минималистичное празднование истории нашего сервера. <br/>
+                  Минималистичное празднование наших легенд. <br/>
                   Никакого неона. Никакого шума. Только пламя.
                </p>
             </div>
