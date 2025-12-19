@@ -71,6 +71,8 @@ function getOidcConfig() {
     },
     // Явно включаем PKCE для безопасности
     // oidc-client использует PKCE по умолчанию для публичных клиентов
+    // ВАЖНО: Bonfire требует S256 метод для code_challenge
+    code_challenge_method: 'S256',
   };
   
   // ВАЖНО: НЕ добавляем client_secret на фронтенд!
@@ -238,6 +240,7 @@ export async function signIn() {
     console.log('Начинаем процесс авторизации...');
     console.log('Redirect URI:', config.redirect_uri);
     console.log('Client ID:', config.client_id ? '***установлен***' : 'НЕ УСТАНОВЛЕН');
+    console.log('PKCE method:', config.code_challenge_method || 'default');
     
     // Очищаем старые данные перед новым входом (на случай проблем)
     try {
@@ -246,6 +249,20 @@ export async function signIn() {
         console.log('Найден старый пользователь, очищаем...');
         await manager.removeUser();
       }
+      
+      // Также очищаем все OIDC ключи из localStorage для предотвращения конфликтов
+      // с неправильным code_challenge_method
+      const oidcKeys = Object.keys(localStorage).filter(key => 
+        key.startsWith('oidc.') || key.includes('oidc')
+      );
+      oidcKeys.forEach(key => {
+        try {
+          localStorage.removeItem(key);
+          console.log('Очищен ключ:', key);
+        } catch (e) {
+          // Игнорируем ошибки
+        }
+      });
     } catch (e) {
       // Игнорируем ошибки при очистке
     }
