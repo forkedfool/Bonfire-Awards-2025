@@ -121,6 +121,62 @@ export async function getCurrentUser() {
   }
 }
 
+// Утилита для логирования всех доступных данных от Bonfire
+export function logBonfireUserData(user) {
+  if (!user) {
+    console.log('Пользователь не авторизован');
+    return;
+  }
+
+  console.group('📊 Данные пользователя от Bonfire');
+  
+  // Токены
+  console.group('🔑 Токены');
+  console.log('Access Token:', user.access_token ? `${user.access_token.substring(0, 20)}...` : 'отсутствует');
+  console.log('ID Token:', user.id_token ? `${user.id_token.substring(0, 20)}...` : 'отсутствует');
+  console.log('Refresh Token:', user.refresh_token ? 'присутствует' : 'отсутствует');
+  console.log('Token Type:', user.token_type || 'Bearer');
+  console.log('Expires At:', user.expires_at ? new Date(user.expires_at * 1000).toLocaleString() : 'неизвестно');
+  console.log('Scope:', user.scope);
+  console.groupEnd();
+  
+  // Профиль пользователя
+  if (user.profile) {
+    console.group('👤 Профиль пользователя');
+    console.log('Subject (ID):', user.profile.sub);
+    console.log('Email:', user.profile.email || 'не указан');
+    console.log('Email Verified:', user.profile.email_verified ? 'да' : 'нет');
+    console.log('Preferred Username:', user.profile.preferred_username || 'не указан');
+    console.log('Name:', user.profile.name || 'не указан');
+    console.log('Issuer:', user.profile.iss || 'не указан');
+    console.log('Audience:', user.profile.aud || 'не указан');
+    
+    // Все остальные поля профиля
+    const otherFields = Object.keys(user.profile).filter(
+      key => !['sub', 'email', 'email_verified', 'preferred_username', 'name', 'iss', 'aud', 'exp', 'iat'].includes(key)
+    );
+    if (otherFields.length > 0) {
+      console.group('📋 Дополнительные поля');
+      otherFields.forEach(key => {
+        console.log(`${key}:`, user.profile[key]);
+      });
+      console.groupEnd();
+    }
+    console.groupEnd();
+  } else {
+    console.log('Профиль пользователя отсутствует');
+  }
+  
+  // Полный объект (для разработки)
+  if (process.env.NODE_ENV === 'development') {
+    console.group('🔍 Полный объект User');
+    console.log(user);
+    console.groupEnd();
+  }
+  
+  console.groupEnd();
+}
+
 // Функция для получения access token
 export async function getAccessToken() {
   try {

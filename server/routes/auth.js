@@ -39,12 +39,6 @@ router.post('/exchange-token', async (req, res) => {
     const code_verifier = req.body.code_verifier;
     const redirect_uri = req.body.redirect_uri;
     
-    console.log('Token exchange request:', {
-      contentType: req.get('content-type'),
-      hasCode: !!code,
-      hasCodeVerifier: !!code_verifier,
-      hasRedirectUri: !!redirect_uri,
-    });
 
     if (!code) {
       return res.status(400).json({ 
@@ -79,13 +73,6 @@ router.post('/exchange-token', async (req, res) => {
       tokenParams.append('client_secret', config.bonfire.clientSecret);
     }
 
-    console.log('Exchanging token with Bonfire:', {
-      authority: config.bonfire.authority,
-      hasCode: !!code,
-      hasCodeVerifier: !!code_verifier,
-      hasClientSecret: !!config.bonfire.clientSecret,
-      redirect_uri: redirect_uri || `${req.protocol}://${req.get('host')}/auth/callback`,
-    });
 
     // Если Bonfire требует client_secret для обмена токенов
     // Используем его здесь (на бекенде, безопасно)
@@ -100,8 +87,6 @@ router.post('/exchange-token', async (req, res) => {
     });
 
     const responseText = await tokenResponse.text();
-    console.log('Token exchange response status:', tokenResponse.status);
-    console.log('Token exchange response:', responseText.substring(0, 200));
 
     if (!tokenResponse.ok) {
       console.error('Token exchange error:', {

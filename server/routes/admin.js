@@ -1,52 +1,46 @@
 import express from 'express';
-import { verifyAdminPassword } from '../middleware/admin.js';
+import { verifyAdmin } from '../middleware/admin.js';
+import { verifyBonfireToken } from '../middleware/auth.js';
 import { config } from '../config.js';
 import { supabase, TABLES } from '../db/supabase.js';
 
 const router = express.Router();
 
-// Endpoint для проверки пароля (без middleware, проверяем вручную)
-router.post('/verify', async (req, res) => {
+// Endpoint для проверки, является ли текущий пользователь админом
+router.get('/check', verifyBonfireToken, (req, res) => {
   try {
-    const password = req.body.password;
+    const userId = req.user?.id;
     
-    if (!password) {
+    if (!userId) {
       return res.status(401).json({ 
         success: false,
-        error: 'Password required' 
+        isAdmin: false,
+        error: 'User ID not found' 
       });
     }
+
+    const isAdmin = config.admin.userIds && config.admin.userIds.includes(userId);
     
-    if (!config.admin.masterPassword) {
-      console.error('ADMIN_MASTER_PASSWORD not configured');
-      return res.status(500).json({ 
-        success: false,
-        error: 'Admin authentication not configured' 
-      });
-    }
+    // Логируем проверку доступа
+    console.log(`[ADMIN CHECK] User ID: ${userId}, Email: ${req.user.email || 'unknown'}, Is Admin: ${isAdmin}`);
     
-    if (password !== config.admin.masterPassword) {
-      return res.status(403).json({ 
-        success: false,
-        error: 'Invalid admin password' 
-      });
-    }
-    
-    return res.status(200).json({ 
+    res.json({ 
       success: true,
-      message: 'Password verified' 
+      isAdmin: isAdmin,
+      userId: userId
     });
   } catch (error) {
-    console.error('Error in admin verify:', error);
+    console.error('Error checking admin status:', error);
     res.status(500).json({ 
       success: false,
+      isAdmin: false,
       error: error.message || 'Internal server error' 
     });
   }
 });
 
-// Все остальные админ-роуты требуют мастер-пароль
-router.use(verifyAdminPassword);
+// Все остальные админ-роуты требуют проверку админских прав
+router.use(verifyAdmin);
 
 // ========== КАТЕГОРИИ ==========
 

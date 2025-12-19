@@ -54,7 +54,6 @@ router.get('/categories', async (req, res) => {
             nominees: (categoryNominees || []).map((cn) => cn.nominee).filter(Boolean),
           };
         } catch (catError) {
-          console.error(`Error processing category ${category.id}:`, catError);
           // Возвращаем категорию без номинантов
           return {
             ...category,
@@ -143,6 +142,9 @@ router.post('/vote', verifyBonfireToken, async (req, res) => {
 
     if (error) throw error;
 
+    // Логируем голосование
+    console.log(`[VOTE] User ID: ${userId}, Category: ${category_id}, Nominee: ${nominee_id}`);
+    
     res.json({ 
       success: true,
       message: 'Vote recorded', 

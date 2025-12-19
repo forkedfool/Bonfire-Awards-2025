@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Routes, Route, Link } from 'react-router-dom';
 import { 
-  Flame, Scroll, Shield, Sword, Crown, Feather, Lock, 
+  Flame, Scroll, Shield, Sword, Crown, Feather, 
   Edit, Trash2, Plus, BarChart, Save, LogOut, ChevronRight, X 
 } from 'lucide-react';
 import { categoriesAPI, votesAPI, adminAPI, setAuthTokenGetter } from './api.js';
@@ -16,10 +16,10 @@ export default function BonfireAwardsApp() {
   
   // State
   const [categories, setCategories] = useState([]);
-  const [view, setView] = useState('landing'); // 'landing', 'voting', 'success', 'admin-login', 'admin-dashboard'
+  const [view, setView] = useState('landing'); // 'landing', 'voting', 'success', 'admin-dashboard'
   const [votes, setVotes] = useState({});
   const [isLoading, setIsLoading] = useState(true);
-  const [adminPass, setAdminPass] = useState('');
+  const [isAdmin, setIsAdmin] = useState(false);
   
   // Admin Editing State
   const [editingCategory, setEditingCategory] = useState(null);
@@ -62,7 +62,6 @@ export default function BonfireAwardsApp() {
       
       // Общий таймаут для всей загрузки (10 секунд)
       const loadTimeout = setTimeout(() => {
-        console.warn('Таймаут загрузки данных - принудительное завершение');
         setIsLoading(false);
       }, 10000);
       
@@ -70,7 +69,6 @@ export default function BonfireAwardsApp() {
       try {
         await loadCategories();
       } catch (error) {
-        console.warn('Не удалось загрузить категории:', error);
         // Используем пустой массив, если не удалось загрузить
         setCategories([]);
       }
@@ -79,12 +77,12 @@ export default function BonfireAwardsApp() {
       try {
         await loadUserVotes();
       } catch (error) {
-        console.warn('Не удалось загрузить голоса:', error);
+        // Игнорируем ошибки загрузки голосов
       }
       
       clearTimeout(loadTimeout);
     } catch (error) {
-      console.error('Ошибка загрузки данных:', error);
+      // Ошибка загрузки данных
     } finally {
       setIsLoading(false);
     }
@@ -95,7 +93,6 @@ export default function BonfireAwardsApp() {
       const data = await categoriesAPI.getAll();
       setCategories(data.categories || []);
     } catch (error) {
-      console.error('Ошибка загрузки категорий:', error);
       throw error;
     }
   }
@@ -111,7 +108,6 @@ export default function BonfireAwardsApp() {
         setVotes({});
       }
     } catch (error) {
-      console.warn('Не удалось загрузить голоса:', error);
       // Не критично, если пользователь не авторизован
     }
   }
@@ -135,7 +131,6 @@ export default function BonfireAwardsApp() {
       
       setVoteStats(statsMap);
     } catch (error) {
-      console.error('Ошибка загрузки статистики:', error);
       throw error; // ВАЖНО: пробрасываем ошибку дальше для проверки прав доступа
     }
   }
@@ -143,12 +138,10 @@ export default function BonfireAwardsApp() {
   // Navigation Handlers
   const handleLogin = async () => {
     try {
-      console.log('Нажата кнопка входа, начинаем процесс авторизации...');
       await signIn();
       // После успешного входа произойдет редирект на Bonfire, затем обратно
       // Если редирект не произошел, это нормально - он может быть асинхронным
     } catch (error) {
-      console.error('Ошибка при входе:', error);
       alert('Ошибка входа: ' + (error.message || 'Неизвестная ошибка. Проверьте консоль для деталей.'));
     }
   };
@@ -167,59 +160,45 @@ export default function BonfireAwardsApp() {
 
   const handleSubmit = async () => {
     try {
+      const userId = user?.profile?.sub;
       await votesAPI.submit(votes);
+      console.log(`[VOTE SUBMITTED] User ID: ${userId || 'unknown'}`);
       setView('success');
     } catch (error) {
       alert('Ошибка при отправке голосов: ' + error.message);
     }
   };
 
-  // Admin Handlers
-  const handleAdminLogin = async () => {
-    if (!adminPass) {
-      alert('Введите пароль');
+  // Проверка статуса админа
+  async function checkAdminStatus() {
+    if (!isAuthenticated || !accessToken) {
+      setIsAdmin(false);
       return;
     }
-    
+
     try {
-      // Проверяем пароль через бекенд
-      const result = await adminAPI.verifyPassword(adminPass);
+      const result = await adminAPI.checkAdmin();
+      setIsAdmin(result.isAdmin || false);
       
-      // Проверяем результат
-      if (result && result.success === false) {
-        throw new Error(result.error || 'Неверный пароль');
+      // Если пользователь админ, автоматически открываем админ-панель
+      if (result.isAdmin && view !== 'admin-dashboard') {
+        try {
+          await loadVoteStats();
+        } catch (statsError) {
+          // Игнорируем ошибки загрузки статистики
+        }
+        setView('admin-dashboard');
       }
-      
-      // Если пароль верный, загружаем статистику и открываем админ-панель
-      try {
-        await loadVoteStats();
-      } catch (statsError) {
-        console.warn('Не удалось загрузить статистику:', statsError);
-        // Продолжаем даже если статистика не загрузилась
-      }
-      
-      setView('admin-dashboard');
-      setAdminPass(''); // Очищаем пароль после успешного входа
     } catch (error) {
-      console.error('Admin login error:', error);
-      
-      let errorMessage = 'Ошибка доступа';
-      if (error.message.includes('403') || error.message.includes('Invalid') || error.message.includes('Неверный')) {
-        errorMessage = 'Неверный пароль';
-      } else if (error.message.includes('fetch failed') || error.message.includes('Failed to fetch')) {
-        errorMessage = 'Сервер недоступен. Убедитесь, что сервер запущен.';
-      } else {
-        errorMessage = error.message || 'Ошибка доступа';
-      }
-      
-      alert(errorMessage);
-      setAdminPass('');
+      setIsAdmin(false);
     }
-  };
+  }
 
   const handleDeleteNominee = async (catId, nomId) => {
     try {
+      const userId = user?.profile?.sub;
       await categoriesAPI.deleteNominee(catId, nomId);
+      console.log(`[ADMIN ACTION] User ID: ${userId || 'unknown'}, Action: delete nominee, Category: ${catId}, Nominee: ${nomId}`);
       await loadCategories();
     } catch (error) {
       alert('Ошибка удаления номинанта: ' + error.message);
@@ -229,6 +208,7 @@ export default function BonfireAwardsApp() {
   const handleAddNominee = async (catId) => {
     if (!newNominee.name) return;
     try {
+      const userId = user?.profile?.sub;
       await categoriesAPI.createNominee(
         catId,
         newNominee.name,
@@ -236,6 +216,7 @@ export default function BonfireAwardsApp() {
         newNominee.role,
         newNominee.imageUrl || null
       );
+      console.log(`[ADMIN ACTION] User ID: ${userId || 'unknown'}, Action: create nominee, Category: ${catId}, Name: ${newNominee.name}`);
       setNewNominee({ name: '', desc: '', role: '', imageUrl: '' });
       await loadCategories();
     } catch (error) {
@@ -248,7 +229,9 @@ export default function BonfireAwardsApp() {
     const code = newCategoryCode.trim() || `CAT_${Math.floor(Math.random() * 1000)}`;
     
     try {
+      const userId = user?.profile?.sub;
       const result = await categoriesAPI.create(newCategoryTitle, code, newCategoryDescription);
+      console.log(`[ADMIN ACTION] User ID: ${userId || 'unknown'}, Action: create category, Title: ${newCategoryTitle}`);
       setNewCategoryTitle('');
       setNewCategoryCode('');
       setNewCategoryDescription('');
@@ -269,7 +252,9 @@ export default function BonfireAwardsApp() {
     }
     
     try {
+      const userId = user?.profile?.sub;
       await categoriesAPI.update(categoryId, editingCategoryData.title, editingCategoryData.code, editingCategoryData.description);
+      console.log(`[ADMIN ACTION] User ID: ${userId || 'unknown'}, Action: update category, ID: ${categoryId}`);
       setIsEditingCategoryData(false);
       await loadCategories();
     } catch (error) {
@@ -283,7 +268,9 @@ export default function BonfireAwardsApp() {
     }
     
     try {
+      const userId = user?.profile?.sub;
       await categoriesAPI.delete(categoryId);
+      console.log(`[ADMIN ACTION] User ID: ${userId || 'unknown'}, Action: delete category, ID: ${categoryId}`);
       setEditingCategory(null);
       await loadCategories();
     } catch (error) {
@@ -486,7 +473,7 @@ export default function BonfireAwardsApp() {
           !isAuthenticated ? (
             <div className="flex flex-col items-center justify-center flex-grow text-center px-4">
               <div className="mb-8 p-6 border-2 border-[#FF5500] rounded-full">
-                <Lock size={48} className="text-[#FF5500]" />
+                <Crown size={48} className="text-[#FF5500]" />
               </div>
               <h2 className="text-4xl font-heading font-bold uppercase mb-4 text-[#E8E6D1]">
                 Требуется авторизация
@@ -641,32 +628,6 @@ export default function BonfireAwardsApp() {
              >
                Return to Bonfire
              </button>
-          </div>
-        )}
-
-        {/* === ADMIN LOGIN === */}
-        {view === 'admin-login' && (
-          <div className="flex flex-col items-center justify-center flex-grow px-4">
-             <div className="w-full max-w-sm p-12 border border-[#3A3532] bg-[#0E0D0C]">
-               <div className="flex justify-center mb-8">
-                 <Lock className="text-[#FF5500]" size={32} />
-               </div>
-               <h2 className="text-xl font-heading text-center mb-8 text-[#E8E6D1] tracking-widest uppercase">Keeper Access</h2>
-               <input 
-                 type="password"
-                 placeholder="Secret Phrase"
-                 className="w-full bg-[#1A1817] border border-[#3A3532] p-4 text-center font-heading text-[#E8E6D1] focus:outline-none focus:border-[#FF5500] mb-8 placeholder-[#3A3532]"
-                 value={adminPass}
-                 onChange={(e) => setAdminPass(e.target.value)}
-                 onKeyDown={(e) => e.key === 'Enter' && handleAdminLogin()}
-               />
-               <button onClick={handleAdminLogin} className="w-full bg-[#3A3532] hover:bg-[#FF5500] hover:text-[#110F0E] text-[#E8E6D1] font-heading text-xs uppercase py-4 transition-colors tracking-widest">
-                 Enter
-               </button>
-               <button onClick={() => setView('landing')} className="w-full mt-4 text-[#555] hover:text-[#888] text-[10px] font-heading uppercase">
-                 Depart
-               </button>
-             </div>
           </div>
         )}
 
@@ -912,9 +873,10 @@ export default function BonfireAwardsApp() {
                   <span className="text-[10px] font-heading uppercase tracking-widest">Privacy Policy</span>
                   <Shield size={12} />
                </Link>
-               <button onClick={() => setView('admin-login')} className="flex items-center gap-2 text-[#333] hover:text-[#FF5500] transition-colors">
-                  <span className="text-[10px] font-heading uppercase tracking-widest">Keeper Login</span>
-                  <Lock size={12} />
+               {isAdmin && (
+               <button onClick={() => setView('admin-dashboard')} className="flex items-center gap-2 text-[#333] hover:text-[#FF5500] transition-colors">
+                  <span className="text-[10px] font-heading uppercase tracking-widest">Keeper Panel</span>
+                  <Crown size={12} />
                </button>
                <div className="text-[#333] text-[10px] font-heading tracking-widest">
                   EST. 2025

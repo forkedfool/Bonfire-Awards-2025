@@ -21,7 +21,6 @@ let getAuthToken = async () => {
   try {
     return await getAccessToken();
   } catch (error) {
-    console.error('Ошибка получения токена:', error);
     return null;
   }
 };
@@ -124,7 +123,6 @@ async function apiRequest(endpoint, options = {}) {
       throw error;
     }
     
-    console.error('API Error:', error);
     throw new Error('Произошла ошибка при выполнении запроса');
   }
 }
@@ -176,10 +174,7 @@ export const votesAPI = {
 
 // Админка
 export const adminAPI = {
-  verifyPassword: (password) => apiRequest('/admin/verify', {
-    method: 'POST',
-    body: JSON.stringify({ password }),
-  }),
+  checkAdmin: () => apiRequest('/admin/check'),
 };
 
 // Установка функции для получения токена (будет использоваться позже)

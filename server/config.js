@@ -17,9 +17,11 @@ export const config = {
     key: process.env.SUPABASE_SERVICE_ROLE_KEY, // Используем service role key для бекенда
   },
   admin: {
-    // ВАЖНО: masterPassword должен быть установлен через переменную окружения!
-    // НЕ используйте дефолтное значение в production!
-    masterPassword: process.env.ADMIN_MASTER_PASSWORD,
+    // Список ID админов (Bonfire user IDs, разделенные запятыми)
+    // Пример: ADMIN_USER_IDS=user-id-1,user-id-2,user-id-3
+    userIds: process.env.ADMIN_USER_IDS 
+      ? process.env.ADMIN_USER_IDS.split(',').map(id => id.trim())
+      : [],
   },
 };
 
