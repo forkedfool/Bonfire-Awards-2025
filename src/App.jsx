@@ -592,7 +592,7 @@ export default function BonfireAwardsApp() {
              <div className="flex items-center gap-3">
                <div className="flex items-center gap-2 text-xs font-heading text-[#8A8580] tracking-widest border border-[#3A3532] px-3 py-1">
                  <span className="w-1.5 h-1.5 bg-[#FF5500] rotate-45"></span>
-                 {user.profile.preferred_username || user.profile.name || 'USER'}
+                 {user.profile.preferred_username || user.profile.name || 'ПОЛЬЗОВАТЕЛЬ'}
                </div>
                <button 
                  onClick={handleLogout}
@@ -606,7 +606,7 @@ export default function BonfireAwardsApp() {
           {view === 'admin-dashboard' && (
              <div className="flex items-center gap-2 text-xs font-heading text-[#FF5500] border border-[#FF5500]/30 px-3 py-1 bg-[#FF5500]/5">
                <Crown size={12} />
-               LORD'S PANEL
+               ПАНЕЛЬ ВЛАДЫКИ
              </div>
           )}
         </div>
@@ -640,7 +640,7 @@ export default function BonfireAwardsApp() {
 
             <div className="mb-8">
               <span className="px-4 py-2 border-y border-[#FF5500]/30 text-[#FF5500] text-xs font-heading tracking-[0.3em] uppercase">
-                The Fire is Lit
+                Огонь Зажжён
               </span>
             </div>
 
@@ -650,8 +650,8 @@ export default function BonfireAwardsApp() {
             </h1>
 
             <p className="max-w-lg text-[#8A8580] text-lg font-body font-light leading-relaxed mb-16 italic">
-              "Gather 'round the fire. Cast your stones. <br/>
-              Honor the legends of our realm."
+              "Соберитесь у костра. Бросьте свой камень. <br/>
+              Почтите легенды нашего мира."
             </p>
 
             {!votingEnabled ? (
@@ -762,7 +762,7 @@ export default function BonfireAwardsApp() {
             <button 
               onClick={handlePrevStep}
               className="fixed left-4 md:left-8 top-1/2 -translate-y-1/2 p-4 text-[#555] hover:text-[#FF5500] transition-colors hidden md:block z-30"
-              title="Previous / Back to Home"
+              title="Назад / На главную"
             >
               <ChevronLeft size={48} strokeWidth={1} />
             </button>
@@ -771,7 +771,7 @@ export default function BonfireAwardsApp() {
               <button 
                 onClick={handleNextStep}
                 className="fixed right-4 md:right-8 top-1/2 -translate-y-1/2 p-4 text-[#555] hover:text-[#FF5500] transition-colors hidden md:block z-30"
-                title="Next Category"
+                title="Следующая категория"
               >
                 <ChevronRight size={48} strokeWidth={1} />
               </button>
@@ -779,10 +779,10 @@ export default function BonfireAwardsApp() {
                <button 
                 onClick={handleSubmit}
                 className="fixed right-8 top-1/2 -translate-y-1/2 p-4 text-[#FF5500] hover:text-white transition-colors hidden md:flex flex-col items-center gap-2 z-30"
-                title="Finish"
+                title="Завершить"
               >
                 <Feather size={48} strokeWidth={1} />
-                <span className="text-[10px] font-heading uppercase tracking-widest">Finish</span>
+                <span className="text-[10px] font-heading uppercase tracking-widest">Завершить</span>
               </button>
             )}
 
@@ -792,7 +792,7 @@ export default function BonfireAwardsApp() {
                   
                   <div className="text-center mb-12 md:mb-20">
                      <span className="text-[#FF5500] font-heading text-xs tracking-[0.3em] uppercase block mb-4 border-b border-[#FF5500]/30 pb-2 inline-block">
-                       {categories[currentStep].code || categories[currentStep].subtitle || 'CATEGORY'}
+                       {categories[currentStep].code || categories[currentStep].subtitle || 'КАТЕГОРИЯ'}
                      </span>
                      <h2 className="text-3xl md:text-6xl font-heading font-bold text-[#E8E6D1] uppercase drop-shadow-lg">
                        {categories[currentStep].title}
@@ -868,8 +868,8 @@ export default function BonfireAwardsApp() {
                         aspect-square
                       `}
                     >
-                       <span className="font-heading text-sm text-[#8A8580] uppercase mb-2">Abstain</span>
-                       <span className="text-[10px] font-body text-[#555]">Pass judgment later</span>
+                       <span className="font-heading text-sm text-[#8A8580] uppercase mb-2">Воздержаться</span>
+                       <span className="text-[10px] font-body text-[#555]">Вынести приговор позже</span>
                     </div>
                   </div>
               </div>
@@ -878,15 +878,15 @@ export default function BonfireAwardsApp() {
             {/* Mobile Footer Nav */}
             <div className="md:hidden fixed bottom-0 left-0 right-0 p-4 bg-[#110F0E] border-t border-[#333] flex justify-between z-40 mb-0">
                <button onClick={handlePrevStep} className="text-[#E8E6D1] font-heading text-sm uppercase flex items-center gap-2">
-                 <ChevronLeft size={16} /> {currentStep === 0 ? 'Home' : 'Prev'}
+                 <ChevronLeft size={16} /> {currentStep === 0 ? 'Главная' : 'Назад'}
                </button>
                {currentStep < categories.length - 1 ? (
                  <button onClick={handleNextStep} className="text-[#FF5500] font-heading text-sm uppercase flex items-center gap-2">
-                   Next <ChevronRight size={16} />
+                   Далее <ChevronRight size={16} />
                  </button>
                ) : (
                  <button onClick={handleSubmit} className="text-[#FF5500] font-heading text-sm uppercase flex items-center gap-2">
-                   Finish <Feather size={16} />
+                   Завершить <Feather size={16} />
                  </button>
                )}
             </div>
@@ -903,10 +903,10 @@ export default function BonfireAwardsApp() {
              </div>
              
              <h2 className="text-4xl md:text-6xl font-heading font-bold uppercase text-[#E8E6D1] mb-6">
-               Fate Sealed
+               Судьба Запечатана
              </h2>
              <p className="text-[#8A8580] font-body italic mb-12">
-               Your judgment has been recorded in the archives.
+               Ваш приговор записан в архивах.
              </p>
              
              <button 
@@ -916,7 +916,7 @@ export default function BonfireAwardsApp() {
                }}
                className="text-[#FF5500] hover:text-[#E8E6D1] font-heading text-sm uppercase tracking-widest transition-colors border-b border-transparent hover:border-[#E8E6D1]"
              >
-               Return to Bonfire
+               Вернуться к Костру
              </button>
           </div>
         )}
@@ -926,13 +926,13 @@ export default function BonfireAwardsApp() {
           <main className="container mx-auto px-4 py-16 max-w-6xl">
             <div className="flex justify-between items-end mb-12 border-b border-[#3A3532] pb-6">
                <div>
-                  <h2 className="text-2xl font-heading font-bold uppercase text-[#E8E6D1] mb-2">The Archives</h2>
-                  <p className="text-[#555] font-heading text-xs tracking-widest">MANAGE THE REALM</p>
+                  <h2 className="text-2xl font-heading font-bold uppercase text-[#E8E6D1] mb-2">Архивы</h2>
+                  <p className="text-[#555] font-heading text-xs tracking-widest">УПРАВЛЕНИЕ МИРОМ</p>
                </div>
                <div className="flex items-center gap-4">
                  {/* Voting Status Toggle */}
                  <div className="flex items-center gap-3 border border-[#3A3532] px-4 py-2">
-                   <span className="text-xs font-heading text-[#888] uppercase">Voting:</span>
+                   <span className="text-xs font-heading text-[#888] uppercase">Голосование:</span>
                    <button
                      onClick={handleToggleVoting}
                      className={`relative w-12 h-6 rounded-full transition-colors ${
@@ -946,7 +946,7 @@ export default function BonfireAwardsApp() {
                    <span className={`text-xs font-heading uppercase ${
                      votingEnabled ? 'text-[#FF5500]' : 'text-[#888]'
                    }`}>
-                     {votingEnabled ? 'ON' : 'OFF'}
+                     {votingEnabled ? 'ВКЛ' : 'ВЫКЛ'}
                    </span>
                  </div>
                  <div className="flex gap-2 border border-[#3A3532] p-1">
@@ -958,7 +958,7 @@ export default function BonfireAwardsApp() {
                          : 'text-[#888] hover:text-[#E8E6D1]'
                      }`}
                    >
-                     Categories
+                     Категории
                    </button>
                    <button 
                      onClick={() => {
@@ -971,14 +971,14 @@ export default function BonfireAwardsApp() {
                          : 'text-[#888] hover:text-[#E8E6D1]'
                      }`}
                    >
-                     Nominees
+                     Номинанты
                    </button>
                  </div>
                  <button onClick={() => {
                    setView('landing');
                    setCurrentStep(0);
                  }} className="flex items-center gap-2 text-red-900 hover:text-red-500 font-heading text-xs border border-red-900/30 px-4 py-2">
-                   <LogOut size={12} /> LEAVE
+                   <LogOut size={12} /> ВЫЙТИ
                  </button>
                </div>
             </div>
@@ -987,7 +987,7 @@ export default function BonfireAwardsApp() {
             {adminView === 'categories' && (
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
               <div className="lg:col-span-1 space-y-2">
-                 <h3 className="text-[#FF5500] font-heading text-xs uppercase tracking-widest mb-6">Chapters</h3>
+                 <h3 className="text-[#FF5500] font-heading text-xs uppercase tracking-widest mb-6">Главы</h3>
                  {categories.map(cat => (
                    <div 
                      key={cat.id}
@@ -1010,38 +1010,38 @@ export default function BonfireAwardsApp() {
                  {isAddingCategory ? (
                    <div className="p-4 border border-[#FF5500]">
                       <input 
-                        autoFocus placeholder="TITLE"
+                        autoFocus placeholder="НАЗВАНИЕ"
                         className="w-full bg-transparent border-b border-[#555] p-2 text-xs text-[#E8E6D1] mb-4 outline-none font-heading uppercase"
                         value={newCategoryTitle}
                         onChange={(e) => setNewCategoryTitle(e.target.value)}
                         onKeyDown={(e) => e.key === 'Enter' && handleAddCategory()}
                       />
                       <input 
-                        placeholder="CODE (optional)"
+                        placeholder="КОД (необязательно)"
                         className="w-full bg-transparent border-b border-[#555] p-2 text-xs text-[#E8E6D1] mb-4 outline-none font-mono"
                         value={newCategoryCode}
                         onChange={(e) => setNewCategoryCode(e.target.value)}
                       />
                       <textarea 
-                        placeholder="Description (optional)"
+                        placeholder="Описание (необязательно)"
                         className="w-full bg-transparent border-b border-[#555] p-2 text-xs text-[#E8E6D1] mb-4 outline-none font-body resize-none"
                         rows="2"
                         value={newCategoryDescription}
                         onChange={(e) => setNewCategoryDescription(e.target.value)}
                       />
                       <div className="flex gap-2">
-                        <button onClick={handleAddCategory} className="flex-1 bg-[#FF5500] text-[#110F0E] text-[10px] font-bold py-2 hover:bg-[#E8E6D1]">ADD</button>
+                        <button onClick={handleAddCategory} className="flex-1 bg-[#FF5500] text-[#110F0E] text-[10px] font-bold py-2 hover:bg-[#E8E6D1]">ДОБАВИТЬ</button>
                         <button onClick={() => {
                           setIsAddingCategory(false);
                           setNewCategoryTitle('');
                           setNewCategoryCode('');
                           setNewCategoryDescription('');
-                        }} className="flex-1 border border-[#555] text-[#555] text-[10px] py-2 hover:text-[#E8E6D1]">CANCEL</button>
+                        }} className="flex-1 border border-[#555] text-[#555] text-[10px] py-2 hover:text-[#E8E6D1]">ОТМЕНА</button>
                       </div>
                    </div>
                  ) : (
                    <div onClick={() => setIsAddingCategory(true)} className="p-4 border border-dashed border-[#3A3532] text-[#555] hover:text-[#FF5500] hover:border-[#FF5500] text-center font-heading text-xs cursor-pointer transition-colors mt-4">
-                      + NEW CHAPTER
+                      + НОВАЯ ГЛАВА
                    </div>
                  )}
               </div>
@@ -1057,19 +1057,19 @@ export default function BonfireAwardsApp() {
                                {isEditingCategoryData ? (
                                  <div className="flex-1 space-y-3">
                                    <input
-                                     placeholder="Category Title"
+                                     placeholder="Название категории"
                                      className="w-full bg-[#110F0E] border border-[#3A3532] p-2 text-sm text-[#E8E6D1] focus:border-[#FF5500] outline-none font-heading uppercase"
                                      value={editingCategoryData.title}
                                      onChange={(e) => setEditingCategoryData({...editingCategoryData, title: e.target.value})}
                                    />
                                    <input
-                                     placeholder="Code"
+                                     placeholder="Код"
                                      className="w-full bg-[#110F0E] border border-[#3A3532] p-2 text-sm text-[#E8E6D1] focus:border-[#FF5500] outline-none font-mono"
                                      value={editingCategoryData.code}
                                      onChange={(e) => setEditingCategoryData({...editingCategoryData, code: e.target.value})}
                                    />
                                    <textarea
-                                     placeholder="Description (optional)"
+                                     placeholder="Описание (необязательно)"
                                      className="w-full bg-[#110F0E] border border-[#3A3532] p-2 text-sm text-[#E8E6D1] focus:border-[#FF5500] outline-none font-body resize-none"
                                      rows="2"
                                      value={editingCategoryData.description}
@@ -1080,7 +1080,7 @@ export default function BonfireAwardsApp() {
                                        onClick={() => handleUpdateCategory(cat.id)}
                                        className="flex-1 bg-[#FF5500] text-[#110F0E] text-xs font-bold py-2 hover:bg-[#E8E6D1]"
                                      >
-                                       SAVE
+                                       СОХРАНИТЬ
                                      </button>
                                      <button
                                        onClick={() => {
@@ -1089,14 +1089,14 @@ export default function BonfireAwardsApp() {
                                        }}
                                        className="flex-1 border border-[#3A3532] text-[#555] text-xs py-2 hover:text-[#E8E6D1]"
                                      >
-                                       CANCEL
+                                       ОТМЕНА
                                      </button>
                                    </div>
                                  </div>
                                ) : (
                                  <>
                                    <div>
-                                     <span className="text-[#555] font-heading text-[10px] tracking-[0.2em] uppercase block mb-2">{cat.code || cat.subtitle || 'CATEGORY'}</span>
+                                     <span className="text-[#555] font-heading text-[10px] tracking-[0.2em] uppercase block mb-2">{cat.code || cat.subtitle || 'КАТЕГОРИЯ'}</span>
                                      <h3 className="text-2xl font-heading text-[#E8E6D1]">{cat.title}</h3>
                                      {cat.description && (
                                        <p className="text-[#8A8580] text-sm font-body mt-2">{cat.description}</p>
@@ -1113,14 +1113,14 @@ export default function BonfireAwardsApp() {
                                           setIsEditingCategoryData(true);
                                         }}
                                         className="p-2 border border-[#3A3532] text-[#555] hover:text-[#E8E6D1] hover:border-[#E8E6D1]"
-                                        title="Edit Category"
+                                        title="Редактировать категорию"
                                       >
                                         <Edit size={16} />
                                       </button>
                                       <button 
                                         onClick={() => handleDeleteCategory(cat.id)}
                                         className="p-2 border border-red-900/30 text-red-900 hover:text-red-500 hover:bg-red-500/10"
-                                        title="Delete Category"
+                                        title="Удалить категорию"
                                       >
                                         <Trash2 size={16} />
                                       </button>
@@ -1155,12 +1155,12 @@ export default function BonfireAwardsApp() {
                             </div>
 
                             <div className="border border-[#3A3532] p-6 bg-[#110F0E]">
-                               <h4 className="text-xs font-heading text-[#888] uppercase mb-6 tracking-widest">Add Nominee to Category</h4>
+                               <h4 className="text-xs font-heading text-[#888] uppercase mb-6 tracking-widest">Добавить номинанта в категорию</h4>
                                
                                {/* Search existing nominees */}
                                <div className="mb-6">
                                  <input 
-                                   placeholder="Search nominees by name..." 
+                                   placeholder="Поиск номинантов по имени..." 
                                    className="w-full bg-transparent border-b border-[#3A3532] py-2 text-sm text-[#E8E6D1] focus:border-[#FF5500] outline-none font-body mb-4" 
                                    value={nomineeSearchQuery} 
                                    onChange={(e) => setNomineeSearchQuery(e.target.value)} 
@@ -1192,7 +1192,7 @@ export default function BonfireAwardsApp() {
                                        nom.name.toLowerCase().includes(nomineeSearchQuery.toLowerCase()) &&
                                        !cat.nominees.some(cn => cn.id === nom.id)
                                      ).length === 0 && (
-                                       <p className="text-[#555] text-xs font-body italic p-2">No nominees found</p>
+                                       <p className="text-[#555] text-xs font-body italic p-2">Номинанты не найдены</p>
                                      )}
                                    </div>
                                  )}
@@ -1200,15 +1200,15 @@ export default function BonfireAwardsApp() {
 
                                {/* Or create new */}
                                <div className="border-t border-[#3A3532] pt-6">
-                                 <h5 className="text-xs font-heading text-[#888] uppercase mb-4 tracking-widest">Or Create New Nominee</h5>
+                                 <h5 className="text-xs font-heading text-[#888] uppercase mb-4 tracking-widest">Или создать нового номинанта</h5>
                                  <div className="grid grid-cols-2 gap-6 mb-6">
-                                    <input placeholder="Name" className="bg-transparent border-b border-[#3A3532] py-2 text-sm text-[#E8E6D1] focus:border-[#FF5500] outline-none font-heading" value={newNominee.name} onChange={(e) => setNewNominee({...newNominee, name: e.target.value})} />
-                                    <input placeholder="Title/Role" className="bg-transparent border-b border-[#3A3532] py-2 text-sm text-[#E8E6D1] focus:border-[#FF5500] outline-none font-heading" value={newNominee.role} onChange={(e) => setNewNominee({...newNominee, role: e.target.value})} />
+                                    <input placeholder="Имя" className="bg-transparent border-b border-[#3A3532] py-2 text-sm text-[#E8E6D1] focus:border-[#FF5500] outline-none font-heading" value={newNominee.name} onChange={(e) => setNewNominee({...newNominee, name: e.target.value})} />
+                                    <input placeholder="Титул/Роль" className="bg-transparent border-b border-[#3A3532] py-2 text-sm text-[#E8E6D1] focus:border-[#FF5500] outline-none font-heading" value={newNominee.role} onChange={(e) => setNewNominee({...newNominee, role: e.target.value})} />
                                  </div>
-                                 <input placeholder="Image URL (optional)" className="w-full bg-transparent border-b border-[#3A3532] py-2 text-sm text-[#E8E6D1] focus:border-[#FF5500] outline-none mb-6 font-body" value={newNominee.imageUrl} onChange={(e) => setNewNominee({...newNominee, imageUrl: e.target.value})} />
-                                 <input placeholder="Legend (Description)" className="w-full bg-transparent border-b border-[#3A3532] py-2 text-sm text-[#E8E6D1] focus:border-[#FF5500] outline-none mb-6 font-body" value={newNominee.desc} onChange={(e) => setNewNominee({...newNominee, desc: e.target.value})} />
+                                 <input placeholder="URL изображения (необязательно)" className="w-full bg-transparent border-b border-[#3A3532] py-2 text-sm text-[#E8E6D1] focus:border-[#FF5500] outline-none mb-6 font-body" value={newNominee.imageUrl} onChange={(e) => setNewNominee({...newNominee, imageUrl: e.target.value})} />
+                                 <input placeholder="Легенда (Описание)" className="w-full bg-transparent border-b border-[#3A3532] py-2 text-sm text-[#E8E6D1] focus:border-[#FF5500] outline-none mb-6 font-body" value={newNominee.desc} onChange={(e) => setNewNominee({...newNominee, desc: e.target.value})} />
                                  <button onClick={() => handleAddNominee(cat.id)} className="w-full bg-[#333] hover:bg-[#FF5500] hover:text-[#110F0E] text-[#E8E6D1] font-heading text-xs uppercase py-3 transition-colors flex items-center justify-center gap-2 tracking-widest">
-                                   <Plus size={14} /> Create & Add
+                                   <Plus size={14} /> Создать и добавить
                                  </button>
                                </div>
                             </div>
@@ -1219,7 +1219,7 @@ export default function BonfireAwardsApp() {
                  ) : (
                    <div className="h-full flex flex-col items-center justify-center border border-dashed border-[#3A3532] text-[#3A3532] font-heading min-h-[400px]">
                       <BarChart size={48} className="mb-4 opacity-20" />
-                      <p className="text-xs tracking-[0.2em]">SELECT A CHRONICLE</p>
+                      <p className="text-xs tracking-[0.2em]">ВЫБЕРИТЕ ХРОНИКУ</p>
                    </div>
                  )}
               </div>
@@ -1230,29 +1230,29 @@ export default function BonfireAwardsApp() {
             {adminView === 'nominees' && (
             <div className="space-y-8">
               <div className="bg-[#161413] border border-[#3A3532] p-8">
-                <h3 className="text-xl font-heading text-[#E8E6D1] mb-6">Create New Nominee</h3>
+                <h3 className="text-xl font-heading text-[#E8E6D1] mb-6">Создать нового номинанта</h3>
                 <div className="grid grid-cols-2 gap-6 mb-6">
                   <input 
-                    placeholder="Name" 
+                    placeholder="Имя" 
                     className="bg-transparent border-b border-[#3A3532] py-2 text-sm text-[#E8E6D1] focus:border-[#FF5500] outline-none font-heading" 
                     value={newNominee.name} 
                     onChange={(e) => setNewNominee({...newNominee, name: e.target.value})} 
                   />
                   <input 
-                    placeholder="Title/Role" 
+                    placeholder="Титул/Роль" 
                     className="bg-transparent border-b border-[#3A3532] py-2 text-sm text-[#E8E6D1] focus:border-[#FF5500] outline-none font-heading" 
                     value={newNominee.role} 
                     onChange={(e) => setNewNominee({...newNominee, role: e.target.value})} 
                   />
                 </div>
                 <input 
-                  placeholder="Image URL (optional)" 
+                  placeholder="URL изображения (необязательно)" 
                   className="w-full bg-transparent border-b border-[#3A3532] py-2 text-sm text-[#E8E6D1] focus:border-[#FF5500] outline-none mb-6 font-body" 
                   value={newNominee.imageUrl} 
                   onChange={(e) => setNewNominee({...newNominee, imageUrl: e.target.value})} 
                 />
                 <input 
-                  placeholder="Legend (Description)" 
+                  placeholder="Легенда (Описание)" 
                   className="w-full bg-transparent border-b border-[#3A3532] py-2 text-sm text-[#E8E6D1] focus:border-[#FF5500] outline-none mb-6 font-body" 
                   value={newNominee.desc} 
                   onChange={(e) => setNewNominee({...newNominee, desc: e.target.value})} 
@@ -1261,15 +1261,15 @@ export default function BonfireAwardsApp() {
                   onClick={handleCreateNominee} 
                   className="w-full bg-[#333] hover:bg-[#FF5500] hover:text-[#110F0E] text-[#E8E6D1] font-heading text-xs uppercase py-3 transition-colors flex items-center justify-center gap-2 tracking-widest"
                 >
-                  <Plus size={14} /> Create Nominee
+                  <Plus size={14} /> Создать номинанта
                 </button>
               </div>
 
               <div className="bg-[#161413] border border-[#3A3532] p-8">
-                <h3 className="text-xl font-heading text-[#E8E6D1] mb-6">All Nominees</h3>
+                <h3 className="text-xl font-heading text-[#E8E6D1] mb-6">Все номинанты</h3>
                 <div className="space-y-4">
                   {allNominees.length === 0 ? (
-                    <p className="text-[#555] text-sm font-body italic">No nominees yet. Create one above.</p>
+                    <p className="text-[#555] text-sm font-body italic">Номинантов пока нет. Создайте одного выше.</p>
                   ) : (
                     allNominees.map(nom => (
                       <div key={nom.id} className="border border-[#3A3532] p-4 flex justify-between items-center group hover:border-[#555] transition-colors">
@@ -1308,9 +1308,9 @@ export default function BonfireAwardsApp() {
            <div className="animate-marquee whitespace-nowrap font-heading text-xs text-[#555] flex gap-16 tracking-[0.2em] uppercase">
              <span>Bonfire Awards 2025</span>
              <Sword size={12} className="text-[#FF5500]" />
-             <span>The Night is Dark</span>
+             <span>Ночь Темна</span>
              <Sword size={12} className="text-[#FF5500]" />
-             <span>History is Written by You</span>
+             <span>Историю Пишете Вы</span>
              <Sword size={12} className="text-[#FF5500]" />
              <span>Bonfire Awards 2025</span>
            </div>
@@ -1323,19 +1323,19 @@ export default function BonfireAwardsApp() {
                   <span className="font-heading font-bold text-[#E8E6D1] tracking-widest">BONFIRE</span>
                </div>
                <p className="text-[#555] text-xs font-body max-w-xs leading-relaxed">
-                  A minimalist celebration of our server's history. <br/>
-                  No neon. No noise. Only the flame.
+                  Минималистичное празднование истории нашего сервера. <br/>
+                  Никакого неона. Никакого шума. Только пламя.
                </p>
             </div>
             
             <div className="flex flex-col items-end gap-4">
                <Link to="/privacy/" className="flex items-center gap-2 text-[#333] hover:text-[#FF5500] transition-colors">
-                  <span className="text-[10px] font-heading uppercase tracking-widest">Privacy Policy</span>
+                  <span className="text-[10px] font-heading uppercase tracking-widest">Политика конфиденциальности</span>
                   <Shield size={12} />
                </Link>
                {isAdmin && (
                <button onClick={() => setView('admin-dashboard')} className="flex items-center gap-2 text-[#333] hover:text-[#FF5500] transition-colors">
-                  <span className="text-[10px] font-heading uppercase tracking-widest">Keeper Panel</span>
+                  <span className="text-[10px] font-heading uppercase tracking-widest">Панель Хранителя</span>
                   <Crown size={12} />
                </button>
                )}
