@@ -43,12 +43,9 @@ router.get('/check', verifyBonfireToken, (req, res) => {
       console.log('WARNING: ADMIN_USER_IDS is empty or not set!');
     }
     
-    // Сравниваем нормализованные значения
-    const isAdmin = config.admin.userIds && (
-      config.admin.userIds.includes(normalizedUserId) || 
-      config.admin.userIds.includes(userId) ||
-      config.admin.userIds.some(id => String(id) === normalizedUserId)
-    );
+    // Сравниваем нормализованные значения (используем some для надежного сравнения)
+    const isAdmin = config.admin.userIds && config.admin.userIds.length > 0 && 
+      config.admin.userIds.some(adminId => String(adminId) === normalizedUserId);
     
     console.log(`Result: Is Admin = ${isAdmin}`);
     console.log('========================');

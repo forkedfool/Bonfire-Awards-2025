@@ -23,9 +23,16 @@ export function verifyAdmin(req, res, next) {
         });
       }
 
-      if (!config.admin.userIds.includes(userId)) {
+      // Нормализуем User ID к строке для сравнения (ID может быть числом или строкой)
+      const normalizedUserId = String(userId);
+      
+      // Проверяем, есть ли ID в списке админов (сравниваем как строки)
+      const isAdmin = config.admin.userIds.some(adminId => String(adminId) === normalizedUserId);
+      
+      if (!isAdmin) {
         // Логируем попытку доступа не-админа
-        console.log(`[ADMIN ACCESS DENIED] User ID: ${userId}, Email: ${req.user.email || 'unknown'}`);
+        console.log(`[ADMIN ACCESS DENIED] User ID: ${userId} (normalized: ${normalizedUserId}), Email: ${req.user.email || 'unknown'}`);
+        console.log(`[ADMIN ACCESS DENIED] Admin IDs: ${config.admin.userIds.join(', ')}`);
         return res.status(403).json({ 
           success: false,
           error: 'Access denied. Admin privileges required.' 

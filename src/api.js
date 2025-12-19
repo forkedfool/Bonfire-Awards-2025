@@ -39,15 +39,19 @@ async function apiRequest(endpoint, options = {}) {
       tokenLength: token?.length || 0,
       tokenPreview: token ? token.substring(0, 30) + '...' : 'none',
       tokenParts: token ? token.split('.').length : 0,
+      tokenType: typeof token,
     });
   }
+  
+  // Проверяем, что токен валидный (не пустой и не undefined)
+  const validToken = token && typeof token === 'string' && token.trim().length > 0;
   
   const config = {
     ...options,
     credentials: 'include',
     headers: {
       'Content-Type': 'application/json',
-      ...(token && { Authorization: `Bearer ${token}` }),
+      ...(validToken && { Authorization: `Bearer ${token.trim()}` }),
       ...options.headers,
     },
   };
@@ -191,6 +195,7 @@ export const adminAPI = {
     method: 'POST',
     body: JSON.stringify({ password }),
   }),
+  checkAdmin: () => apiRequest('/admin/check'),
 };
 
 // Установка функции для получения токена (будет использоваться позже)
