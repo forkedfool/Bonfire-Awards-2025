@@ -724,11 +724,15 @@ export default function BonfireAwardsApp() {
                 Голосование ещё закрыто. Дождитесь открытия голосования.
               </p>
               <button 
-                onClick={() => {
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  console.log('[NAV] Returning to landing from voting (closed)');
+                  sessionStorage.setItem('returnedFromVoting', 'true');
                   setView('landing');
                   setCurrentStep(0);
                 }}
-                className="px-8 py-3 bg-transparent border border-[#555] text-[#888] font-heading font-bold uppercase tracking-widest hover:border-[#FF5500] hover:text-[#FF5500] transition-all duration-300"
+                className="px-8 py-3 bg-transparent border border-[#555] text-[#888] font-heading font-bold uppercase tracking-widest hover:border-[#FF5500] hover:text-[#FF5500] transition-all duration-300 cursor-pointer"
               >
                 Вернуться на главную
               </button>
