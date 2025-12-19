@@ -30,19 +30,36 @@ export async function verifyBonfireToken(req, res, next) {
   try {
     const authHeader = req.headers.authorization;
     
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    if (!authHeader) {
       return res.status(401).json({ 
         success: false,
-        error: 'No token provided' 
+        error: 'No authorization header provided' 
+      });
+    }
+    
+    if (!authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ 
+        success: false,
+        error: 'Invalid authorization format. Expected: Bearer <token>' 
       });
     }
 
-    const token = authHeader.substring(7);
+    const token = authHeader.substring(7).trim();
 
-    if (!token) {
+    if (!token || token.length === 0) {
       return res.status(401).json({ 
         success: false,
         error: 'Token is empty' 
+      });
+    }
+    
+    // Проверяем базовый формат токена (JWT должен иметь 3 части, разделенные точками)
+    const tokenParts = token.split('.');
+    if (tokenParts.length !== 3) {
+      console.error('Invalid token format: expected JWT with 3 parts, got', tokenParts.length);
+      return res.status(401).json({ 
+        success: false,
+        error: 'Invalid token format' 
       });
     }
 

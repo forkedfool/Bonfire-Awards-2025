@@ -2,9 +2,6 @@ import express from 'express';
 import { config } from '../config.js';
 import { verifyBonfireToken } from '../middleware/auth.js';
 
-// Middleware для обработки form-urlencoded (для oidc-client)
-const urlencodedParser = express.urlencoded({ extended: true });
-
 const router = express.Router();
 
 // Получить информацию о текущем пользователе
@@ -34,12 +31,20 @@ router.get('/me', verifyBonfireToken, (req, res) => {
 // для обмена токенов, и обмен не может происходить на фронтенде
 // Также используется oidc-client для обхода проблем с прямым обменом токенов
 // Поддерживает как JSON, так и application/x-www-form-urlencoded (для oidc-client)
-router.post('/exchange-token', urlencodedParser, async (req, res) => {
+router.post('/exchange-token', async (req, res) => {
   try {
     // Поддерживаем оба формата: JSON и form-urlencoded
+    // express.urlencoded уже обработал form-urlencoded в index.js
     const code = req.body.code;
     const code_verifier = req.body.code_verifier;
     const redirect_uri = req.body.redirect_uri;
+    
+    console.log('Token exchange request:', {
+      contentType: req.get('content-type'),
+      hasCode: !!code,
+      hasCodeVerifier: !!code_verifier,
+      hasRedirectUri: !!redirect_uri,
+    });
 
     if (!code) {
       return res.status(400).json({ 

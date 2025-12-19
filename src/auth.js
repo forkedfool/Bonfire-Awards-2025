@@ -129,7 +129,25 @@ export async function getAccessToken() {
     }
     const manager = getUserManager();
     const user = await manager.getUser();
-    return user?.access_token || null;
+    
+    if (!user) {
+      return null;
+    }
+    
+    // Проверяем, не истек ли токен
+    if (user.expired) {
+      console.log('Токен истек, пытаемся обновить...');
+      try {
+        await manager.signinSilent();
+        const refreshedUser = await manager.getUser();
+        return refreshedUser?.access_token || null;
+      } catch (silentError) {
+        console.error('Ошибка обновления токена:', silentError);
+        return null;
+      }
+    }
+    
+    return user.access_token || null;
   } catch (error) {
     console.error('Ошибка получения токена:', error);
     return null;

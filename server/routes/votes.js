@@ -12,29 +12,55 @@ router.get('/categories', async (req, res) => {
       .select('*')
       .order('name');
 
-    if (categoriesError) throw categoriesError;
+    if (categoriesError) {
+      console.error('Supabase categories error:', categoriesError);
+      throw new Error(`Database error: ${categoriesError.message || 'Unknown error'}`);
+    }
+
+    if (!categories || categories.length === 0) {
+      return res.json({ 
+        success: true,
+        categories: [] 
+      });
+    }
 
     // Получаем номинантов для каждой категории
     const categoriesWithNominees = await Promise.all(
       categories.map(async (category) => {
-        const { data: categoryNominees, error: cnError } = await supabase
-          .from(TABLES.CATEGORY_NOMINEES)
-          .select(`
-            nominee:nominees (
-              id,
-              name,
-              description,
-              image_url
-            )
-          `)
-          .eq('category_id', category.id);
+        try {
+          const { data: categoryNominees, error: cnError } = await supabase
+            .from(TABLES.CATEGORY_NOMINEES)
+            .select(`
+              nominee:nominees (
+                id,
+                name,
+                description,
+                image_url
+              )
+            `)
+            .eq('category_id', category.id);
 
-        if (cnError) throw cnError;
+          if (cnError) {
+            console.error(`Error fetching nominees for category ${category.id}:`, cnError);
+            // Возвращаем категорию без номинантов вместо ошибки
+            return {
+              ...category,
+              nominees: [],
+            };
+          }
 
-        return {
-          ...category,
-          nominees: categoryNominees.map((cn) => cn.nominee).filter(Boolean),
-        };
+          return {
+            ...category,
+            nominees: (categoryNominees || []).map((cn) => cn.nominee).filter(Boolean),
+          };
+        } catch (catError) {
+          console.error(`Error processing category ${category.id}:`, catError);
+          // Возвращаем категорию без номинантов
+          return {
+            ...category,
+            nominees: [],
+          };
+        }
       })
     );
 
@@ -44,9 +70,11 @@ router.get('/categories', async (req, res) => {
     });
   } catch (error) {
     console.error('Error fetching categories:', error);
+    console.error('Error stack:', error.stack);
     res.status(500).json({ 
       success: false,
-      error: error.message 
+      error: error.message || 'Failed to fetch categories',
+      details: process.env.NODE_ENV === 'development' ? error.stack : undefined,
     });
   }
 });

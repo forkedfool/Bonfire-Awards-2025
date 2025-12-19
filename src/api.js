@@ -42,7 +42,10 @@ async function apiRequest(endpoint, options = {}) {
   };
 
   try {
-    console.log('API Request:', url, config.method || 'GET');
+    console.log('API Request:', url, config.method || 'GET', {
+      hasToken: !!token,
+      tokenLength: token ? token.length : 0,
+    });
     const response = await fetchWithTimeout(url, config, API_TIMEOUT);
     
     console.log('API Response status:', response.status, response.statusText);
