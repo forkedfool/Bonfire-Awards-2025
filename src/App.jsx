@@ -229,9 +229,12 @@ export default function BonfireAwardsApp() {
       // Преобразуем данные номинантов для фронтенда
       const transformed = (data || []).map(nom => {
         const nominee = { ...nom };
-        if (nominee.image_url !== undefined) {
-          nominee.imageUrl = nominee.image_url;
+        if (nominee.image_url !== undefined && nominee.image_url !== null) {
+          const imgUrl = String(nominee.image_url).trim();
+          nominee.imageUrl = imgUrl !== '' ? imgUrl : null;
           delete nominee.image_url;
+        } else {
+          nominee.imageUrl = null;
         }
         // Парсим description как JSON, если это возможно
         if (nominee.description) {
@@ -857,9 +860,24 @@ export default function BonfireAwardsApp() {
                             ${isSelected ? 'border-[#FF5500] shadow-[0_0_30px_rgba(255,85,0,0.2)]' : 'border-[#3A3532] group-hover:border-[#8A8580]'}
                           `}>
                              {/* Placeholder Img or Icon */}
-                             <div className="w-full h-full flex items-center justify-center bg-[#0E0D0C] group-hover:bg-[#161413] transition-colors">
-                                {nominee.imageUrl ? (
-                                  <img src={nominee.imageUrl} alt={nominee.name} className="w-full h-full object-cover" />
+                             <div className="w-full h-full flex items-center justify-center bg-[#0E0D0C] group-hover:bg-[#161413] transition-colors relative">
+                                {nominee.imageUrl && String(nominee.imageUrl).trim() !== '' ? (
+                                  <>
+                                    <img 
+                                      src={nominee.imageUrl} 
+                                      alt={nominee.name} 
+                                      className="w-full h-full object-cover"
+                                      onError={(e) => {
+                                        console.error('[IMAGE] Failed to load:', nominee.imageUrl, 'for nominee:', nominee.name);
+                                        e.target.style.display = 'none';
+                                        const fallback = e.target.parentElement?.querySelector('.image-fallback');
+                                        if (fallback) fallback.classList.remove('hidden');
+                                      }}
+                                    />
+                                    <div className="image-fallback hidden absolute inset-0 w-full h-full flex items-center justify-center">
+                                      <Shield size={48} className={`transition-colors ${isSelected ? 'text-[#FF5500]' : 'text-[#333]'}`} strokeWidth={1} />
+                                    </div>
+                                  </>
                                 ) : (
                                   <Shield size={48} className={`transition-colors ${isSelected ? 'text-[#FF5500]' : 'text-[#333]'}`} strokeWidth={1} />
                                 )}

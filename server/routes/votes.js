@@ -101,9 +101,11 @@ router.get('/categories', async (req, res) => {
             if (!cn.nominee) return null;
             const nominee = { ...cn.nominee };
             // Преобразуем image_url в imageUrl для фронтенда
-            if (nominee.image_url !== undefined) {
-              nominee.imageUrl = nominee.image_url;
+            if (nominee.image_url !== undefined && nominee.image_url !== null && String(nominee.image_url).trim() !== '') {
+              nominee.imageUrl = String(nominee.image_url).trim();
               delete nominee.image_url;
+            } else {
+              nominee.imageUrl = null;
             }
             // Парсим description как JSON, если это возможно (для поддержки desc и role)
             if (nominee.description) {

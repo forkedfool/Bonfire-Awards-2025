@@ -232,9 +232,11 @@ router.get('/nominees', async (req, res) => {
     // Преобразуем данные для фронтенда
     const transformed = (data || []).map(nom => {
       const nominee = { ...nom };
-      if (nominee.image_url !== undefined) {
-        nominee.imageUrl = nominee.image_url;
+      if (nominee.image_url !== undefined && nominee.image_url !== null && String(nominee.image_url).trim() !== '') {
+        nominee.imageUrl = String(nominee.image_url).trim();
         delete nominee.image_url;
+      } else {
+        nominee.imageUrl = null;
       }
       // Парсим description как JSON, если это возможно
       if (nominee.description) {
