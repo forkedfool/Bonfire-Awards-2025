@@ -11,6 +11,19 @@ export default defineConfig({
         changeOrigin: true,
       }
     }
-  }
+  },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          // Выделяем vendor библиотеки в отдельные чанки
+          'react-vendor': ['react', 'react-dom', 'react-router-dom'],
+          'oidc-vendor': ['oidc-client'],
+          'icons-vendor': ['lucide-react'],
+        },
+      },
+    },
+    chunkSizeWarningLimit: 600, // Увеличиваем лимит до 600 KB
+  },
 })
 

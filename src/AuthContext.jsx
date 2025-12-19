@@ -49,7 +49,6 @@ export function AuthProvider({ children }) {
 
   async function handleAuthCallback() {
     try {
-      const { userManager } = await import('./auth.js');
       const user = await userManager.signinRedirectCallback();
       setUser(user);
       // Убираем callback из URL
@@ -63,7 +62,6 @@ export function AuthProvider({ children }) {
 
   async function handleSilentCallback() {
     try {
-      const { userManager } = await import('./auth.js');
       await userManager.signinSilentCallback();
       await loadUser();
     } catch (error) {
