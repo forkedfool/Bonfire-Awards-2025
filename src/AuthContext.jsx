@@ -3,7 +3,8 @@ import {
   userManager, 
   getCurrentUser, 
   getAccessToken,
-  subscribeToUserChanges 
+  subscribeToUserChanges,
+  handleSilentCallback as handleSilentCallbackAuth
 } from './auth.js';
 
 const AuthContext = createContext(null);
@@ -49,8 +50,7 @@ export function AuthProvider({ children }) {
 
   async function handleSilentCallback() {
     try {
-      const { handleSilentCallback } = await import('./auth.js');
-      await handleSilentCallback();
+      await handleSilentCallbackAuth();
       await loadUser();
     } catch (error) {
       console.error('Ошибка silent callback:', error);

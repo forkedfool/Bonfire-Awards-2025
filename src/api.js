@@ -114,6 +114,14 @@ export const votesAPI = {
   getAllStats: () => apiRequest('/votes/stats'),
 };
 
+// Админка
+export const adminAPI = {
+  verifyPassword: (password) => apiRequest('/admin/verify', {
+    method: 'POST',
+    body: JSON.stringify({ password }),
+  }),
+};
+
 // Установка функции для получения токена (будет использоваться позже)
 export function setAuthTokenGetter(fn) {
   getAuthToken = fn;

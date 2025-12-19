@@ -4,7 +4,7 @@ import {
   Flame, Scroll, Shield, Sword, Crown, Feather, Lock, 
   Edit, Trash2, Plus, BarChart, Save, LogOut, ChevronRight, X 
 } from 'lucide-react';
-import { categoriesAPI, votesAPI, setAuthTokenGetter } from './api.js';
+import { categoriesAPI, votesAPI, adminAPI, setAuthTokenGetter } from './api.js';
 import { useAuth } from './AuthContext.jsx';
 import { signIn, signOut } from './auth.js';
 import Privacy from './Privacy.jsx';
@@ -163,22 +163,21 @@ export default function BonfireAwardsApp() {
 
   // Admin Handlers
   const handleAdminLogin = async () => {
-    // ПРОВЕРКА ПАРОЛЯ
-    if (adminPass !== 'admin') {
-      alert('Неверный пароль');
-      setAdminPass('');
+    if (!adminPass) {
+      alert('Введите пароль');
       return;
     }
     
-    // Пытаемся загрузить статистику - если пользователь админ, запрос пройдет
-    // Если нет - бекенд вернет 403
     try {
+      // Проверяем пароль через бекенд
+      await adminAPI.verifyPassword(adminPass);
+      // Если пароль верный, загружаем статистику и открываем админ-панель
       await loadVoteStats();
       setView('admin-dashboard');
       setAdminPass(''); // Очищаем пароль после успешного входа
     } catch (error) {
-      if (error.message.includes('403') || error.message.includes('запрещен')) {
-        alert('ACCESS DENIED - У вас нет прав администратора');
+      if (error.message.includes('403') || error.message.includes('Invalid')) {
+        alert('Неверный пароль');
         setAdminPass('');
       } else {
         alert('Ошибка доступа: ' + error.message);

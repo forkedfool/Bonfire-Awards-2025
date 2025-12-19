@@ -1,10 +1,30 @@
 import express from 'express';
 import { verifyAdminPassword } from '../middleware/admin.js';
+import { config } from '../config.js';
 import { supabase, TABLES } from '../db/supabase.js';
 
 const router = express.Router();
 
-// Все админ-роуты требуют мастер-пароль
+// Endpoint для проверки пароля (без middleware, проверяем вручную)
+router.post('/verify', async (req, res) => {
+  const password = req.body.password;
+  
+  if (!password) {
+    return res.status(401).json({ error: 'Password required' });
+  }
+  
+  if (!config.admin.masterPassword) {
+    return res.status(500).json({ error: 'Admin authentication not configured' });
+  }
+  
+  if (password !== config.admin.masterPassword) {
+    return res.status(403).json({ error: 'Invalid admin password' });
+  }
+  
+  return res.status(200).json({ success: true });
+});
+
+// Все остальные админ-роуты требуют мастер-пароль
 router.use(verifyAdminPassword);
 
 // ========== КАТЕГОРИИ ==========
