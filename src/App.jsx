@@ -226,15 +226,24 @@ export default function BonfireAwardsApp() {
   async function loadAllNominees() {
     try {
       const data = await nomineesAPI.getAll();
+      console.log('[FRONTEND] loadAllNominees - Received data:', data);
       // Преобразуем данные номинантов для фронтенда
       const transformed = (data || []).map(nom => {
         const nominee = { ...nom };
+        console.log('[FRONTEND] Processing nominee:', { id: nominee.id, name: nominee.name, image_url: nominee.image_url, imageUrl: nominee.imageUrl });
         if (nominee.image_url !== undefined && nominee.image_url !== null) {
           const imgUrl = String(nominee.image_url).trim();
           nominee.imageUrl = imgUrl !== '' ? imgUrl : null;
+          console.log('[FRONTEND] Set imageUrl from image_url:', nominee.imageUrl);
           delete nominee.image_url;
+        } else if (nominee.imageUrl !== undefined) {
+          // Если уже есть imageUrl (из API), просто проверяем его
+          const imgUrl = String(nominee.imageUrl).trim();
+          nominee.imageUrl = imgUrl !== '' ? imgUrl : null;
+          console.log('[FRONTEND] Using existing imageUrl:', nominee.imageUrl);
         } else {
           nominee.imageUrl = null;
+          console.log('[FRONTEND] No image, set imageUrl to null');
         }
         // Парсим description как JSON, если это возможно
         if (nominee.description) {
@@ -408,6 +417,12 @@ export default function BonfireAwardsApp() {
     if (!newNominee.name) return;
     try {
       const userId = user?.profile?.sub;
+      console.log('[FRONTEND] Creating nominee with data:', { 
+        name: newNominee.name, 
+        desc: newNominee.desc, 
+        role: newNominee.role, 
+        imageUrl: newNominee.imageUrl 
+      });
       await nomineesAPI.create(
         newNominee.name,
         newNominee.desc,
@@ -867,6 +882,9 @@ export default function BonfireAwardsApp() {
                                       src={nominee.imageUrl} 
                                       alt={nominee.name} 
                                       className="w-full h-full object-cover"
+                                      onLoad={() => {
+                                        console.log('[IMAGE] Successfully loaded:', nominee.imageUrl, 'for nominee:', nominee.name);
+                                      }}
                                       onError={(e) => {
                                         console.error('[IMAGE] Failed to load:', nominee.imageUrl, 'for nominee:', nominee.name);
                                         e.target.style.display = 'none';

@@ -229,14 +229,19 @@ router.get('/nominees', async (req, res) => {
 
     if (error) throw error;
     
+    console.log('[ADMIN] Loaded nominees from DB:', data?.length || 0);
+    
     // Преобразуем данные для фронтенда
     const transformed = (data || []).map(nom => {
       const nominee = { ...nom };
+      console.log('[ADMIN] Processing nominee:', { id: nominee.id, name: nominee.name, image_url: nominee.image_url });
       if (nominee.image_url !== undefined && nominee.image_url !== null && String(nominee.image_url).trim() !== '') {
         nominee.imageUrl = String(nominee.image_url).trim();
+        console.log('[ADMIN] Set imageUrl:', nominee.imageUrl);
         delete nominee.image_url;
       } else {
         nominee.imageUrl = null;
+        console.log('[ADMIN] No image_url, set imageUrl to null');
       }
       // Парсим description как JSON, если это возможно
       if (nominee.description) {
@@ -263,24 +268,37 @@ router.post('/nominees', async (req, res) => {
   try {
     const { name, description, image_url } = req.body;
 
+    console.log('[ADMIN] POST /nominees - Received:', { name, description, image_url, body: req.body });
+
     if (!name) {
       return res.status(400).json({ error: 'name is required' });
     }
 
+    // Обрабатываем image_url - может прийти как image_url или imageUrl
+    const processedImageUrl = image_url && String(image_url).trim() !== '' ? String(image_url).trim() : null;
+    console.log('[ADMIN] Processed image_url for DB:', processedImageUrl);
+
     const { data, error } = await supabase
       .from(TABLES.NOMINEES)
-      .insert({ name, description, image_url })
+      .insert({ name, description, image_url: processedImageUrl })
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) {
+      console.error('[ADMIN] Error creating nominee:', error);
+      throw error;
+    }
+    
+    console.log('[ADMIN] Created nominee in DB:', { id: data.id, name: data.name, image_url: data.image_url });
     
     // Преобразуем ответ для фронтенда
     const response = {
       ...data,
-      imageUrl: data.image_url,
+      imageUrl: data.image_url || null,
     };
     delete response.image_url;
+    
+    console.log('[ADMIN] Returning response:', { id: response.id, name: response.name, imageUrl: response.imageUrl });
     
     // Парсим description для извлечения desc и role
     if (data.description) {
@@ -382,12 +400,15 @@ router.post('/categories/:categoryId/nominees', async (req, res) => {
     const { categoryId } = req.params;
     const { name, desc, role, imageUrl } = req.body;
 
+    console.log('[ADMIN] Creating nominee in category:', { categoryId, name, imageUrl });
+
     if (!name) {
       return res.status(400).json({ error: 'name is required' });
     }
 
     // Преобразуем imageUrl (camelCase) в image_url (snake_case) для базы данных
-    const image_url = imageUrl || null;
+    const image_url = imageUrl && imageUrl.trim() !== '' ? imageUrl.trim() : null;
+    console.log('[ADMIN] Processed image_url:', image_url);
     
     // Сохраняем desc и role в description как JSON для поддержки дополнительных полей
     let description = null;
@@ -420,11 +441,13 @@ router.post('/categories/:categoryId/nominees', async (req, res) => {
     // Возвращаем номинанта в формате фронтенда
     const response = {
       ...nominee,
-      imageUrl: nominee.image_url,
+      imageUrl: nominee.image_url || null,
       desc: desc || '',
       role: role || '',
     };
     delete response.image_url;
+
+    console.log('[ADMIN] Created nominee response:', { id: response.id, name: response.name, imageUrl: response.imageUrl });
 
     res.json(response);
   } catch (error) {

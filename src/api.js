@@ -165,10 +165,19 @@ export const categoriesAPI = {
   delete: (id) => apiRequest(`/categories/${id}`, {
     method: 'DELETE',
   }),
-  createNominee: (categoryId, name, desc, role, imageUrl) => apiRequest(`/categories/${categoryId}/nominees`, {
-    method: 'POST',
-    body: JSON.stringify({ name, desc, role, imageUrl }),
-  }),
+  createNominee: (categoryId, name, desc, role, imageUrl) => {
+    const payload = { 
+      name, 
+      desc, 
+      role, 
+      imageUrl: imageUrl && imageUrl.trim() !== '' ? imageUrl.trim() : null 
+    };
+    console.log('[API] Creating nominee in category with payload:', payload);
+    return apiRequest(`/categories/${categoryId}/nominees`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
   updateNominee: (categoryId, nomineeId, name, desc, role, imageUrl) => apiRequest(`/categories/${categoryId}/nominees/${nomineeId}`, {
     method: 'PUT',
     body: JSON.stringify({ name, desc, role, imageUrl }),
@@ -193,14 +202,18 @@ export const votesAPI = {
 export const nomineesAPI = {
   getAll: () => apiRequest('/admin/nominees'),
   getById: (id) => apiRequest(`/admin/nominees/${id}`),
-  create: (name, desc, role, imageUrl) => apiRequest('/admin/nominees', {
-    method: 'POST',
-    body: JSON.stringify({ 
+  create: (name, desc, role, imageUrl) => {
+    const payload = { 
       name, 
       description: desc || role ? JSON.stringify({ desc: desc || '', role: role || '' }) : null,
-      image_url: imageUrl || null 
-    }),
-  }),
+      image_url: imageUrl && imageUrl.trim() !== '' ? imageUrl.trim() : null 
+    };
+    console.log('[API] Creating nominee with payload:', payload);
+    return apiRequest('/admin/nominees', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
   update: (id, name, desc, role, imageUrl) => apiRequest(`/admin/nominees/${id}`, {
     method: 'PUT',
     body: JSON.stringify({ 
