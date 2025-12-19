@@ -42,17 +42,29 @@ async function apiRequest(endpoint, options = {}) {
   };
 
   try {
+    console.log('API Request:', url, config.method || 'GET');
     const response = await fetchWithTimeout(url, config, API_TIMEOUT);
+    
+    console.log('API Response status:', response.status, response.statusText);
     
     // Если ответ не JSON
     let data;
+    const contentType = response.headers.get('content-type');
+    if (!contentType || !contentType.includes('application/json')) {
+      const text = await response.text();
+      console.error('Non-JSON response:', text.substring(0, 200));
+      throw new Error(`Сервер вернул неверный формат ответа: ${contentType || 'unknown'}`);
+    }
+    
     try {
       data = await response.json();
     } catch (e) {
+      console.error('JSON parse error:', e);
       throw new Error('Сервер недоступен или вернул неверный ответ');
     }
     
     if (!response.ok) {
+      console.error('API Error response:', data);
       throw new Error(data.error || 'Ошибка запроса');
     }
     

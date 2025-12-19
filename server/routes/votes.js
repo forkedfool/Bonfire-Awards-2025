@@ -38,7 +38,7 @@ router.get('/categories', async (req, res) => {
       })
     );
 
-    res.json(categoriesWithNominees);
+    res.json({ categories: categoriesWithNominees });
   } catch (error) {
     console.error('Error fetching categories:', error);
     res.status(500).json({ error: error.message });
