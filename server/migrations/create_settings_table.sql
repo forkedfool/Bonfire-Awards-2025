@@ -28,3 +28,4 @@ COMMENT ON TABLE settings IS 'Настройки приложения Bonfire Aw
 COMMENT ON COLUMN settings.key IS 'Уникальный ключ настройки';
 COMMENT ON COLUMN settings.value IS 'Значение настройки (строка)';
 
+

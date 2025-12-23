@@ -4,7 +4,7 @@ import {
   Flame, Scroll, Shield, Sword, Crown, Feather, 
   Edit, Trash2, Plus, BarChart, Save, LogOut, ChevronRight, ChevronLeft, X, Check 
 } from 'lucide-react';
-import { categoriesAPI, votesAPI, adminAPI, nomineesAPI, votingAPI, setAuthTokenGetter } from './api.js';
+import { categoriesAPI, votesAPI, adminAPI, nomineesAPI, votingAPI, usersAPI, setAuthTokenGetter } from './api.js';
 import { useAuth } from './AuthContext.jsx';
 import { signIn, signOut } from './auth.js';
 import Privacy from './Privacy.jsx';
@@ -38,12 +38,13 @@ export default function BonfireAwardsApp() {
 
   // Vote Stats для админ-панели
   const [voteStats, setVoteStats] = useState({});
+  const [fullStats, setFullStats] = useState(null);
   
   // Nominees Management State
   const [allNominees, setAllNominees] = useState([]);
   const [nomineeSearchQuery, setNomineeSearchQuery] = useState('');
   const [isAddingNomineeToCategory, setIsAddingNomineeToCategory] = useState(false);
-  const [adminView, setAdminView] = useState('categories'); // 'categories' or 'nominees'
+  const [adminView, setAdminView] = useState('categories'); // 'categories', 'nominees', or 'stats'
   const [editingNominee, setEditingNominee] = useState(null);
   const [editingNomineeData, setEditingNomineeData] = useState({ name: '', desc: '', role: '', imageUrl: '' });
   
@@ -81,6 +82,60 @@ export default function BonfireAwardsApp() {
       })();
     }
   }, [authLoading, isAuthenticated]);
+
+  // Сохраняем пользователя при логине
+  useEffect(() => {
+    async function saveUser() {
+      if (isAuthenticated && user && user.profile) {
+        try {
+          const profile = user.profile;
+          await usersAPI.saveUser({
+            username: profile.preferred_username || profile.name,
+            email: profile.email,
+            preferred_username: profile.preferred_username,
+            name: profile.name,
+            email_verified: profile.email_verified || false,
+          });
+          
+          // Отслеживаем логин
+          await usersAPI.trackSession('landing', 'login', {
+            user_id: profile.sub,
+          });
+        } catch (error) {
+          console.error('[USER] Error saving user:', error);
+        }
+      }
+    }
+    
+    if (isAuthenticated && user) {
+      saveUser();
+    }
+  }, [isAuthenticated, user]);
+
+  // Отслеживаем просмотры страниц
+  useEffect(() => {
+    async function trackPageView() {
+      try {
+        const page = view === 'landing' ? 'landing' : 
+                    view === 'voting' ? 'voting' : 
+                    view === 'admin-dashboard' ? 'admin-dashboard' : 
+                    view === 'success' ? 'success' : 'unknown';
+        
+        await usersAPI.trackSession(page, 'view', {
+          is_authenticated: isAuthenticated,
+          user_id: user?.profile?.sub || null,
+        });
+      } catch (error) {
+        // Игнорируем ошибки отслеживания
+        console.error('[TRACKING] Error tracking page view:', error);
+      }
+    }
+    
+    // Отслеживаем только при изменении view
+    if (view) {
+      trackPageView();
+    }
+  }, [view, isAuthenticated, user]);
 
   // Обработка callback после авторизации
   useEffect(() => {
@@ -136,11 +191,13 @@ export default function BonfireAwardsApp() {
       loadVoteStats().catch(error => {
         console.error('[VOTE STATS] Error loading on mount:', error);
       });
+      loadFullStats();
 
       const interval = setInterval(() => {
         loadVoteStats().catch(error => {
           console.error('[VOTE STATS] Error loading on interval:', error);
         });
+        loadFullStats();
       }, 10000); // Обновляем каждые 10 секунд
 
       return () => clearInterval(interval);
@@ -1174,6 +1231,19 @@ export default function BonfireAwardsApp() {
                    >
                      Номинанты
                    </button>
+                   <button 
+                     onClick={() => {
+                       setAdminView('stats');
+                       loadFullStats();
+                     }}
+                     className={`px-4 py-2 text-xs font-heading uppercase transition-colors ${
+                       adminView === 'stats' 
+                         ? 'bg-[#FF5500] text-[#110F0E]' 
+                         : 'text-[#888] hover:text-[#E8E6D1]'
+                     }`}
+                   >
+                     Статистика
+                   </button>
                  </div>
                  <button onClick={() => {
                    setView('landing');
@@ -1557,6 +1627,110 @@ export default function BonfireAwardsApp() {
                   )}
                 </div>
               </div>
+            </div>
+            )}
+
+            {/* === STATS VIEW === */}
+            {adminView === 'stats' && (
+            <div className="space-y-8">
+              {fullStats ? (
+                <>
+                  {/* Общая статистика */}
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                    <div className="bg-[#161413] border border-[#3A3532] p-6">
+                      <div className="text-[#555] font-heading text-xs uppercase tracking-widest mb-2">Всего голосов</div>
+                      <div className="text-3xl font-heading font-bold text-[#FF5500]">{fullStats.votes?.total || 0}</div>
+                    </div>
+                    <div className="bg-[#161413] border border-[#3A3532] p-6">
+                      <div className="text-[#555] font-heading text-xs uppercase tracking-widest mb-2">Уникальных голосующих</div>
+                      <div className="text-3xl font-heading font-bold text-[#FF5500]">{fullStats.votes?.unique_voters || 0}</div>
+                    </div>
+                    <div className="bg-[#161413] border border-[#3A3532] p-6">
+                      <div className="text-[#555] font-heading text-xs uppercase tracking-widest mb-2">Всего пользователей</div>
+                      <div className="text-3xl font-heading font-bold text-[#FF5500]">{fullStats.users?.total || 0}</div>
+                    </div>
+                    <div className="bg-[#161413] border border-[#3A3532] p-6">
+                      <div className="text-[#555] font-heading text-xs uppercase tracking-widest mb-2">Активных за 24ч</div>
+                      <div className="text-3xl font-heading font-bold text-[#FF5500]">{fullStats.sessions?.active_24h || 0}</div>
+                    </div>
+                  </div>
+
+                  {/* Статистика по просмотрам */}
+                  <div className="bg-[#161413] border border-[#3A3532] p-8">
+                    <h3 className="text-xl font-heading text-[#E8E6D1] mb-6">Просмотры страниц</h3>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      {Object.entries(fullStats.sessions?.page_views || {}).map(([page, count]) => (
+                        <div key={page} className="border border-[#3A3532] p-4">
+                          <div className="text-[#555] font-heading text-xs uppercase tracking-widest mb-1">{page}</div>
+                          <div className="text-2xl font-heading font-bold text-[#E8E6D1]">{count}</div>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="mt-6 pt-6 border-t border-[#3A3532]">
+                      <div className="flex justify-between items-center">
+                        <span className="text-[#555] font-heading text-xs uppercase tracking-widest">Всего сессий</span>
+                        <span className="text-xl font-heading font-bold text-[#FF5500]">{fullStats.sessions?.total || 0}</span>
+                      </div>
+                      <div className="flex justify-between items-center mt-2">
+                        <span className="text-[#555] font-heading text-xs uppercase tracking-widest">Всего логинов</span>
+                        <span className="text-xl font-heading font-bold text-[#FF5500]">{fullStats.sessions?.total_logins || 0}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Недавние пользователи */}
+                  {fullStats.users?.recent && fullStats.users.recent.length > 0 && (
+                    <div className="bg-[#161413] border border-[#3A3532] p-8">
+                      <h3 className="text-xl font-heading text-[#E8E6D1] mb-6">Недавние пользователи</h3>
+                      <div className="space-y-2">
+                        {fullStats.users.recent.map((u) => (
+                          <div key={u.id} className="flex justify-between items-center border-b border-[#3A3532] pb-2">
+                            <div>
+                              <div className="font-heading text-[#E8E6D1]">{u.preferred_username || u.username || u.name || 'Без имени'}</div>
+                              <div className="text-xs text-[#555] font-mono">{u.bonfire_id}</div>
+                            </div>
+                            <div className="text-right">
+                              <div className="text-xs text-[#555] font-heading uppercase">Логинов: {u.login_count || 0}</div>
+                              <div className="text-xs text-[#888] font-body">
+                                {u.last_login_at ? new Date(u.last_login_at).toLocaleString('ru-RU') : 'Никогда'}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Статистика по категориям */}
+                  {fullStats.votes?.categories && fullStats.votes.categories.length > 0 && (
+                    <div className="bg-[#161413] border border-[#3A3532] p-8">
+                      <h3 className="text-xl font-heading text-[#E8E6D1] mb-6">Голоса по категориям</h3>
+                      <div className="space-y-4">
+                        {fullStats.votes.categories.map((cat) => (
+                          <div key={cat.category_id} className="border border-[#3A3532] p-4">
+                            <div className="flex justify-between items-center mb-3">
+                              <h4 className="font-heading text-[#E8E6D1]">{cat.category_name}</h4>
+                              <span className="text-[#FF5500] font-heading font-bold">Всего: {cat.total_votes || 0}</span>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                              {cat.nominees && cat.nominees.map((nom) => (
+                                <div key={nom.nominee_id} className="flex justify-between items-center text-sm border-b border-[#3A3532] pb-1">
+                                  <span className="text-[#888]">{nom.nominee_name}</span>
+                                  <span className="text-[#FF5500] font-heading font-bold">{nom.votes || 0}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className="bg-[#161413] border border-[#3A3532] p-8 text-center">
+                  <div className="text-[#555] font-heading">Загрузка статистики...</div>
+                </div>
+              )}
             </div>
             )}
           </main>

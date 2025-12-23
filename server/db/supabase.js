@@ -14,5 +14,7 @@ export const TABLES = {
   CATEGORY_NOMINEES: 'category_nominees',
   VOTES: 'votes',
   SETTINGS: 'settings',
+  USERS: 'users',
+  SESSIONS: 'sessions',
 };
 

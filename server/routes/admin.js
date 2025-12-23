@@ -819,15 +819,15 @@ router.get('/votes', async (req, res) => {
   }
 });
 
-// Получить статистику голосования
+// Получить расширенную статистику (голоса, пользователи, просмотры)
 router.get('/stats', async (req, res) => {
   try {
-    // Общая статистика
+    // Статистика по голосам
     const { count: totalVotes } = await supabase
       .from(TABLES.VOTES)
       .select('*', { count: 'exact', head: true });
 
-    const { count: totalUsers } = await supabase
+    const { count: uniqueVoters } = await supabase
       .from(TABLES.VOTES)
       .select('user_id', { count: 'exact', head: true });
 
@@ -878,10 +878,67 @@ router.get('/stats', async (req, res) => {
       total_votes: Object.values(cat.nominees).reduce((sum, nom) => sum + nom.votes, 0),
     }));
 
+    // Статистика по пользователям
+    const { count: totalUsers } = await supabase
+      .from(TABLES.USERS)
+      .select('*', { count: 'exact', head: true });
+
+    const { data: recentUsers } = await supabase
+      .from(TABLES.USERS)
+      .select('*')
+      .order('last_login_at', { ascending: false })
+      .limit(10);
+
+    // Статистика по сессиям/просмотрам
+    const { count: totalSessions } = await supabase
+      .from(TABLES.SESSIONS)
+      .select('*', { count: 'exact', head: true });
+
+    // Просмотры по страницам
+    const { data: pageViews } = await supabase
+      .from(TABLES.SESSIONS)
+      .select('page, action')
+      .eq('action', 'view');
+
+    const pageStats = {};
+    if (pageViews) {
+      pageViews.forEach(session => {
+        const page = session.page || 'unknown';
+        pageStats[page] = (pageStats[page] || 0) + 1;
+      });
+    }
+
+    // Уникальные пользователи за последние 24 часа
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const { count: activeUsers24h } = await supabase
+      .from(TABLES.SESSIONS)
+      .select('user_id', { count: 'exact', head: true })
+      .not('user_id', 'is', null)
+      .gte('created_at', yesterday.toISOString());
+
+    // Логины (сессии с action='login')
+    const { count: totalLogins } = await supabase
+      .from(TABLES.SESSIONS)
+      .select('*', { count: 'exact', head: true })
+      .eq('action', 'login');
+
     res.json({
-      total_votes: totalVotes || 0,
-      total_users: totalUsers || 0,
-      categories,
+      votes: {
+        total: totalVotes || 0,
+        unique_voters: uniqueVoters || 0,
+        categories,
+      },
+      users: {
+        total: totalUsers || 0,
+        recent: recentUsers || [],
+      },
+      sessions: {
+        total: totalSessions || 0,
+        page_views: pageStats,
+        active_24h: activeUsers24h || 0,
+        total_logins: totalLogins || 0,
+      },
     });
   } catch (error) {
     console.error('Error fetching stats:', error);

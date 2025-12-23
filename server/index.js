@@ -4,6 +4,7 @@ import dotenv from 'dotenv';
 import votesRouter from './routes/votes.js';
 import adminRouter from './routes/admin.js';
 import authRouter from './routes/auth.js';
+import usersRouter from './routes/users.js';
 import { config } from './config.js';
 
 dotenv.config();
@@ -26,6 +27,7 @@ app.get('/api/health', (req, res) => {
 app.use('/api/votes', votesRouter);
 app.use('/api/admin', adminRouter);
 app.use('/api/auth', authRouter);
+app.use('/api/users', usersRouter);
 
 // Публичный эндпоинт для категорий (проксируем к votes router)
 // Это позволяет клиенту использовать /api/categories вместо /api/votes/categories

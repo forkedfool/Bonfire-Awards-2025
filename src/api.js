@@ -260,6 +260,19 @@ export const adminAPI = {
     method: 'PUT',
     body: JSON.stringify({ enabled }),
   }),
+  getFullStats: () => apiRequest('/admin/stats'),
+};
+
+// Пользователи и сессии
+export const usersAPI = {
+  saveUser: (userData) => apiRequest('/users/save', {
+    method: 'POST',
+    body: JSON.stringify(userData),
+  }),
+  trackSession: (page, action, metadata) => apiRequest('/users/track-session', {
+    method: 'POST',
+    body: JSON.stringify({ page, action, metadata }),
+  }),
 };
 
 // Установка функции для получения токена (будет использоваться позже)
