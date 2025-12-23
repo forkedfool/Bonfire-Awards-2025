@@ -321,6 +321,17 @@ export default function BonfireAwardsApp() {
     }
   }
 
+  async function loadFullStats() {
+    try {
+      const data = await adminAPI.getFullStats();
+      console.log('[FULL STATS] Loaded:', data);
+      setFullStats(data);
+    } catch (error) {
+      console.error('[FULL STATS] Error loading full stats:', error);
+      // Не устанавливаем ошибку, чтобы не ломать UI
+    }
+  }
+
   async function loadAllNominees() {
     try {
       const data = await nomineesAPI.getAll();

@@ -820,7 +820,7 @@ router.get('/votes', async (req, res) => {
 });
 
 // Получить расширенную статистику (голоса, пользователи, просмотры)
-router.get('/stats', async (req, res) => {
+router.get('/stats', verifyAdmin, async (req, res) => {
   try {
     // Статистика по голосам
     const { count: totalVotes } = await supabase
@@ -878,50 +878,68 @@ router.get('/stats', async (req, res) => {
       total_votes: Object.values(cat.nominees).reduce((sum, nom) => sum + nom.votes, 0),
     }));
 
-    // Статистика по пользователям
-    const { count: totalUsers } = await supabase
-      .from(TABLES.USERS)
-      .select('*', { count: 'exact', head: true });
+    // Статистика по пользователям (может быть ошибка, если таблица не создана)
+    let totalUsers = 0;
+    let recentUsers = [];
+    try {
+      const { count } = await supabase
+        .from(TABLES.USERS)
+        .select('*', { count: 'exact', head: true });
+      totalUsers = count || 0;
 
-    const { data: recentUsers } = await supabase
-      .from(TABLES.USERS)
-      .select('*')
-      .order('last_login_at', { ascending: false })
-      .limit(10);
-
-    // Статистика по сессиям/просмотрам
-    const { count: totalSessions } = await supabase
-      .from(TABLES.SESSIONS)
-      .select('*', { count: 'exact', head: true });
-
-    // Просмотры по страницам
-    const { data: pageViews } = await supabase
-      .from(TABLES.SESSIONS)
-      .select('page, action')
-      .eq('action', 'view');
-
-    const pageStats = {};
-    if (pageViews) {
-      pageViews.forEach(session => {
-        const page = session.page || 'unknown';
-        pageStats[page] = (pageStats[page] || 0) + 1;
-      });
+      const { data } = await supabase
+        .from(TABLES.USERS)
+        .select('*')
+        .order('last_login_at', { ascending: false })
+        .limit(10);
+      recentUsers = data || [];
+    } catch (userError) {
+      console.warn('Users table may not exist yet:', userError.message);
     }
 
-    // Уникальные пользователи за последние 24 часа
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    const { count: activeUsers24h } = await supabase
-      .from(TABLES.SESSIONS)
-      .select('user_id', { count: 'exact', head: true })
-      .not('user_id', 'is', null)
-      .gte('created_at', yesterday.toISOString());
+    // Статистика по сессиям/просмотрам (может быть ошибка, если таблица не создана)
+    let totalSessions = 0;
+    let pageStats = {};
+    let activeUsers24h = 0;
+    let totalLogins = 0;
+    try {
+      const { count } = await supabase
+        .from(TABLES.SESSIONS)
+        .select('*', { count: 'exact', head: true });
+      totalSessions = count || 0;
 
-    // Логины (сессии с action='login')
-    const { count: totalLogins } = await supabase
-      .from(TABLES.SESSIONS)
-      .select('*', { count: 'exact', head: true })
-      .eq('action', 'login');
+      // Просмотры по страницам
+      const { data: pageViews } = await supabase
+        .from(TABLES.SESSIONS)
+        .select('page, action')
+        .eq('action', 'view');
+
+      if (pageViews) {
+        pageViews.forEach(session => {
+          const page = session.page || 'unknown';
+          pageStats[page] = (pageStats[page] || 0) + 1;
+        });
+      }
+
+      // Уникальные пользователи за последние 24 часа
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+      const { count: activeCount } = await supabase
+        .from(TABLES.SESSIONS)
+        .select('user_id', { count: 'exact', head: true })
+        .not('user_id', 'is', null)
+        .gte('created_at', yesterday.toISOString());
+      activeUsers24h = activeCount || 0;
+
+      // Логины (сессии с action='login')
+      const { count: loginCount } = await supabase
+        .from(TABLES.SESSIONS)
+        .select('*', { count: 'exact', head: true })
+        .eq('action', 'login');
+      totalLogins = loginCount || 0;
+    } catch (sessionError) {
+      console.warn('Sessions table may not exist yet:', sessionError.message);
+    }
 
     res.json({
       votes: {
